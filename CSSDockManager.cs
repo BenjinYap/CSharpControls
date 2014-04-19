@@ -61,11 +61,11 @@ namespace CSharpControls {
 			awd.Interval = 250;
 			awd.Start ();
 			awd.Tick += (a, b) => {
-				SplitterPanel p = GetHoverSplitterPanel (initialSplit);
+				/*SplitterPanel p = GetHoverSplitterPanel (initialSplit);
 
 				if (p != null) {
 					p.BackColor = Color.Green;
-				}
+				}*/
 			};
 		}
 
@@ -116,7 +116,37 @@ namespace CSharpControls {
 			if (initialDocked == false) throw new Exception ("MUST DO INITIAL DOCK");
 			if (splitPanels.ContainsKey (sectionName) == false) throw new Exception ("SECTION DOESN'T EXIST");
 
+			SplitterPanel parentPanel = splitPanels [sectionName];
+			SplitContainer split = new SplitContainer ();
+			split.Dock = DockStyle.Fill;
+			SplitterPanel oldPanel = null;
+			SplitterPanel newPanel = null;
 
+			if (direction == DockDirection.Top) {
+				split.Orientation = Orientation.Horizontal;
+				oldPanel = split.Panel2;
+				newPanel = split.Panel1;
+			} else if (direction == DockDirection.Bottom) {
+				split.Orientation = Orientation.Horizontal;
+				oldPanel = split.Panel1;
+				newPanel = split.Panel2;
+			} else if (direction == DockDirection.Left) {
+				split.Orientation = Orientation.Vertical;
+				oldPanel = split.Panel2;
+				newPanel = split.Panel1;
+			} else if (direction == DockDirection.Right) {
+				split.Orientation = Orientation.Vertical;
+				oldPanel = split.Panel1;
+				newPanel = split.Panel2;
+			}
+
+			if (direction == DockDirection.Center) {
+
+			} else {
+				oldPanel.Controls.Add (parentPanel.Controls [0]);
+				newPanel.Controls.Add (CreateTabControl (form));
+				parentPanel.Controls.Add (split);
+			}
 		}
 
 		private void onResizeBegin (object obj, EventArgs e) {
