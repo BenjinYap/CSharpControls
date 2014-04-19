@@ -57,16 +57,17 @@ namespace CSharpControls {
 			initialSplit.Panel2Collapsed = true;
 			
 			this.Controls.Add (initialSplit);
-
+			/*
 			awd.Interval = 250;
 			awd.Start ();
 			awd.Tick += (a, b) => {
-				/*SplitterPanel p = GetHoverSplitterPanel (initialSplit);
+				SplitterPanel p = GetHoverSplitterPanel (initialSplit);
 
 				if (p != null) {
 					p.BackColor = Color.Green;
-				}*/
+				}
 			};
+			 */
 		}
 
 		private Timer awd = new Timer ();
@@ -116,36 +117,63 @@ namespace CSharpControls {
 			if (initialDocked == false) throw new Exception ("MUST DO INITIAL DOCK");
 			if (splitPanels.ContainsKey (sectionName) == false) throw new Exception ("SECTION DOESN'T EXIST");
 
-			SplitterPanel parentPanel = splitPanels [sectionName];
+			SplitterPanel parentPanel = null;
 			SplitContainer split = new SplitContainer ();
 			split.Dock = DockStyle.Fill;
 			SplitterPanel oldPanel = null;
 			SplitterPanel newPanel = null;
+			
+			if (direction == DockDirection.Top || direction == DockDirection.Bottom || direction == DockDirection.Left || direction == DockDirection.Right) {
+				parentPanel = splitPanels [sectionName];
 
-			if (direction == DockDirection.Top) {
-				split.Orientation = Orientation.Horizontal;
-				oldPanel = split.Panel2;
-				newPanel = split.Panel1;
-			} else if (direction == DockDirection.Bottom) {
-				split.Orientation = Orientation.Horizontal;
-				oldPanel = split.Panel1;
-				newPanel = split.Panel2;
-			} else if (direction == DockDirection.Left) {
-				split.Orientation = Orientation.Vertical;
-				oldPanel = split.Panel2;
-				newPanel = split.Panel1;
-			} else if (direction == DockDirection.Right) {
-				split.Orientation = Orientation.Vertical;
-				oldPanel = split.Panel1;
-				newPanel = split.Panel2;
-			}
+				if (direction == DockDirection.Top) {
+					split.Orientation = Orientation.Horizontal;
+					oldPanel = split.Panel2;
+					newPanel = split.Panel1;
+				} else if (direction == DockDirection.Bottom) {
+					split.Orientation = Orientation.Horizontal;
+					oldPanel = split.Panel1;
+					newPanel = split.Panel2;
+				} else if (direction == DockDirection.Left) {
+					split.Orientation = Orientation.Vertical;
+					oldPanel = split.Panel2;
+					newPanel = split.Panel1;
+				} else if (direction == DockDirection.Right) {
+					split.Orientation = Orientation.Vertical;
+					oldPanel = split.Panel1;
+					newPanel = split.Panel2;
+				}
 
-			if (direction == DockDirection.Center) {
-
-			} else {
+				splitPanels [sectionName] = oldPanel;
+				splitPanels [newSectionName] = newPanel;
 				oldPanel.Controls.Add (parentPanel.Controls [0]);
 				newPanel.Controls.Add (CreateTabControl (form));
 				parentPanel.Controls.Add (split);
+			} else if (direction == DockDirection.FarTop || direction == DockDirection.FarBottom || direction == DockDirection.FarLeft || direction == DockDirection.FarRight) {
+				parentPanel = (SplitterPanel) splitPanels [sectionName].Parent.Parent;
+				parentPanel.BackColor = Color.Red;
+				if (direction == DockDirection.FarTop) {
+
+				} else if (direction == DockDirection.FarBottom) {
+
+				} else if (direction == DockDirection.FarLeft) {
+
+				} else if (direction == DockDirection.FarRight) {
+					split.Orientation = Orientation.Vertical;
+					oldPanel = split.Panel1;
+					newPanel = split.Panel2;
+				}
+
+				splitPanels [newSectionName] = newPanel;
+				oldPanel.Controls.Add (parentPanel.Controls [0]);
+				newPanel.Controls.Add (CreateTabControl (form));
+				parentPanel.Controls.Add (split);
+			}
+			
+			if (direction == DockDirection.Center) {
+
+			} else {
+				
 			}
 		}
 
@@ -211,6 +239,7 @@ namespace CSharpControls {
 			form.Hide ();
 			TabControl control = new TabControl ();
 			control.Dock = DockStyle.Fill;
+			
 			TabPage page = new TabPage (form.Text);
 			
 			foreach (Control c in form.Controls) {
@@ -300,6 +329,6 @@ namespace CSharpControls {
 
 		private const string initialSectionName = "CSSDockManagerInitialSection";
 
-		public enum DockDirection {Top, Bottom, Left, Right, Center}
+		public enum DockDirection {Top, Bottom, Left, Right, Center, FarTop, FarBottom, FarLeft, FarRight}
 	}
 }
