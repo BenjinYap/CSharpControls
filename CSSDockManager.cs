@@ -123,57 +123,40 @@ namespace CSharpControls {
 			SplitterPanel oldPanel = null;
 			SplitterPanel newPanel = null;
 			
-			if (direction == DockDirection.Top || direction == DockDirection.Bottom || direction == DockDirection.Left || direction == DockDirection.Right) {
-				parentPanel = splitPanels [sectionName];
-
-				if (direction == DockDirection.Top) {
-					split.Orientation = Orientation.Horizontal;
-					oldPanel = split.Panel2;
-					newPanel = split.Panel1;
-				} else if (direction == DockDirection.Bottom) {
-					split.Orientation = Orientation.Horizontal;
-					oldPanel = split.Panel1;
-					newPanel = split.Panel2;
-				} else if (direction == DockDirection.Left) {
-					split.Orientation = Orientation.Vertical;
-					oldPanel = split.Panel2;
-					newPanel = split.Panel1;
-				} else if (direction == DockDirection.Right) {
-					split.Orientation = Orientation.Vertical;
-					oldPanel = split.Panel1;
-					newPanel = split.Panel2;
-				}
-
-				splitPanels [sectionName] = oldPanel;
-				splitPanels [newSectionName] = newPanel;
-				oldPanel.Controls.Add (parentPanel.Controls [0]);
-				newPanel.Controls.Add (CreateTabControl (form));
-				parentPanel.Controls.Add (split);
-			} else if (direction == DockDirection.FarTop || direction == DockDirection.FarBottom || direction == DockDirection.FarLeft || direction == DockDirection.FarRight) {
-				parentPanel = (SplitterPanel) splitPanels [sectionName].Parent.Parent;
-				parentPanel.BackColor = Color.Red;
-				if (direction == DockDirection.FarTop) {
-
-				} else if (direction == DockDirection.FarBottom) {
-
-				} else if (direction == DockDirection.FarLeft) {
-
-				} else if (direction == DockDirection.FarRight) {
-					split.Orientation = Orientation.Vertical;
-					oldPanel = split.Panel1;
-					newPanel = split.Panel2;
-				}
-
-				splitPanels [newSectionName] = newPanel;
-				oldPanel.Controls.Add (parentPanel.Controls [0]);
-				newPanel.Controls.Add (CreateTabControl (form));
-				parentPanel.Controls.Add (split);
+			if (direction == DockDirection.Top || direction == DockDirection.FarTop) {
+				split.Orientation = Orientation.Horizontal;
+				oldPanel = split.Panel2;
+				newPanel = split.Panel1;
+			} else if (direction == DockDirection.Bottom || direction == DockDirection.FarBottom) {
+				split.Orientation = Orientation.Horizontal;
+				oldPanel = split.Panel1;
+				newPanel = split.Panel2;
+			} else if (direction == DockDirection.Left || direction == DockDirection.FarLeft) {
+				split.Orientation = Orientation.Vertical;
+				oldPanel = split.Panel2;
+				newPanel = split.Panel1;
+			} else if (direction == DockDirection.Right || direction == DockDirection.FarRight) {
+				split.Orientation = Orientation.Vertical;
+				oldPanel = split.Panel1;
+				newPanel = split.Panel2;
 			}
-			
-			if (direction == DockDirection.Center) {
 
-			} else {
+			if (direction >= DockDirection.Top && direction <= DockDirection.Right) {
+				parentPanel = splitPanels [sectionName];
+				splitPanels [sectionName] = oldPanel;
+			} else if (direction >= DockDirection.FarTop && direction <= DockDirection.FarRight) {
+				parentPanel = (SplitterPanel) splitPanels [sectionName].Parent.Parent;
+			}
+
+			splitPanels [newSectionName] = newPanel;
+
+			if (direction != DockDirection.Center) {
 				
+				oldPanel.Controls.Add (parentPanel.Controls [0]);
+				newPanel.Controls.Add (CreateTabControl (form));
+				parentPanel.Controls.Add (split);
+			} else {
+
 			}
 		}
 
@@ -329,6 +312,6 @@ namespace CSharpControls {
 
 		private const string initialSectionName = "CSSDockManagerInitialSection";
 
-		public enum DockDirection {Top, Bottom, Left, Right, Center, FarTop, FarBottom, FarLeft, FarRight}
+		public enum DockDirection {Top = 0, Bottom, Left, Right, Center, FarTop, FarBottom, FarLeft, FarRight}
 	}
 }
