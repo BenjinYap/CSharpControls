@@ -11,7 +11,7 @@ namespace CSharpControls {
 	public class CSSDockManager:Panel {
 		private Color flapColor = Color.FromArgb (128, Color.Red);
 		private TableLayoutPanel flapTable = new TableLayoutPanel ();
-		private Panel [] flaps = new Panel [9];
+		private List <Panel> flaps = new List <Panel> ();
 		
 		private List <Form> dockableForms = new List<Form> ();
 		private Dictionary <Form, Size> formSizes = new Dictionary<Form,Size> ();
@@ -128,6 +128,14 @@ namespace CSharpControls {
 				
 				if (initialDocked) {
 					HideFlapTable ();
+					Panel flap = flaps.Find (f => CursorOverControl (f));
+					
+					if (flap != null) {
+						List <SplitterPanel> panels = splitPanels.Values.ToList ();
+						SplitterPanel panel = GetHoverSection ();
+						DockForm (splitPanels.Keys.ToList ()[panels.IndexOf (panel)], form, "awd", (DockDirection) flaps.IndexOf (flap));
+					}
+					//dock flaps
 				} else {
 					if (CursorOverControl (this)) {
 						DockInitialForm (form, "a");
@@ -286,8 +294,8 @@ namespace CSharpControls {
 				flapTable.ColumnStyles.Add (new ColumnStyle (SizeType.Percent, 33));
 			}
 			
-			for (int i = 0; i < flaps.Length; i++) {
-				flaps [i] = new Panel ();
+			for (int i = 0; i < 9; i++) {
+				flaps.Add (new Panel ());
 				flaps [i].BackColor = flapColor;
 			}
 
