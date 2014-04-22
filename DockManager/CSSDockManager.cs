@@ -28,9 +28,7 @@ namespace CSharpControls.DockManager {
 		private List <Form> dockableForms = new List<Form> ();
 		private Dictionary <Form, Size> formSizes = new Dictionary<Form,Size> ();
 		
-		private Dictionary <string, SplitterPanel> splitPanels = new Dictionary<string,SplitterPanel> ();
-
-		private Dictionary <int, SplitterPanel> dockPanels = new Dictionary<int,SplitterPanel> ();  //panels that can be docked on
+		private List <SplitterPanel> dockPanels = new List<SplitterPanel> ();
 
 		private bool dragStarted = false;
 		private bool dragEnded = false;
@@ -44,7 +42,7 @@ namespace CSharpControls.DockManager {
 			BaseSplitContainer.Dock = DockStyle.Fill;
 			BaseSplitContainer.Panel2Collapsed = true;
 			this.Controls.Add (BaseSplitContainer);
-			dockPanels [numDockPanels++] = BaseSplitContainer.Panel1;
+			dockPanels.Add (BaseSplitContainer.Panel1);
 
 			initialSplit.Panel2Collapsed = true;
 			
@@ -75,12 +73,6 @@ namespace CSharpControls.DockManager {
 			formSizes.Remove (form);
 		}
 
-		public void DockInitialForm (Form form, string newSectionName) {
-			splitPanels [newSectionName] = initialSplit.Panel1;
-			initialDocked = true;
-			initialSplit.Panel1.Controls.Add (CreateTabControl (form));
-		}
-
 		public void DockInitialForm (Form form) {
 			if (initialDocked) throw new Exception ("initial form already docked");
 
@@ -91,7 +83,7 @@ namespace CSharpControls.DockManager {
 
 		public void DockForm (SplitterPanel panel, Form form, DockDirection direction) {
 			if (initialDocked == false) throw new Exception ("dock initial form first");
-			if (dockPanels.ContainsValue (panel) == false) throw new Exception ("not a valid panel");
+			if (dockPanels.Contains (panel) == false) throw new Exception ("not a valid panel");
 
 			if (direction == DockDirection.Center) {
 				TabControl tabControl = (TabControl) panel.Controls [0];
@@ -131,10 +123,10 @@ namespace CSharpControls.DockManager {
 				newPanel.Controls.Add (CreateTabControl (form));
 
 				if (oldPanel.Controls [0] is TabControl) {
-					dockPanels [numDockPanels++] = oldPanel;
+					dockPanels.Add (oldPanel);
 				}
 
-				dockPanels [numDockPanels++] = newPanel;
+				dockPanels.Add (newPanel);
 				
 				if (split.Panel1.Controls [0] is SplitContainer) {
 					split.DockSplitContainer1 = (DockSplitContainer) split.Panel1.Controls [0];
@@ -153,7 +145,7 @@ namespace CSharpControls.DockManager {
 				}
 
 				if (panel != dockPanels [0]) {
-					dockPanels.Remove (dockPanels.Keys.ToList ().Find (key => dockPanels [key] == panel));
+					dockPanels.Remove (panel);
 				}
 
 				panel.Controls.Add (split);
@@ -169,53 +161,6 @@ namespace CSharpControls.DockManager {
 			}
 
 			Debug.WriteLine (dockPanels.Count);
-		}
-
-		public void DockForm (string sectionName, Form form, string newSectionName, DockDirection direction) {
-			if (initialDocked == false) throw new Exception ("MUST DO INITIAL DOCK");
-			if (splitPanels.ContainsKey (sectionName) == false) throw new Exception ("SECTION DOESN'T EXIST");
-
-			SplitterPanel parentPanel = null;
-			SplitContainer split = new SplitContainer ();
-			split.Dock = DockStyle.Fill;
-			SplitterPanel oldPanel = null;
-			SplitterPanel newPanel = null;
-			
-			if (direction == DockDirection.Top || direction == DockDirection.FarTop) {
-				split.Orientation = Orientation.Horizontal;
-				oldPanel = split.Panel2;
-				newPanel = split.Panel1;
-			} else if (direction == DockDirection.Bottom || direction == DockDirection.FarBottom) {
-				split.Orientation = Orientation.Horizontal;
-				oldPanel = split.Panel1;
-				newPanel = split.Panel2;
-			} else if (direction == DockDirection.Left || direction == DockDirection.FarLeft) {
-				split.Orientation = Orientation.Vertical;
-				oldPanel = split.Panel2;
-				newPanel = split.Panel1;
-			} else if (direction == DockDirection.Right || direction == DockDirection.FarRight) {
-				split.Orientation = Orientation.Vertical;
-				oldPanel = split.Panel1;
-				newPanel = split.Panel2;
-			}
-
-			if (direction >= DockDirection.Top && direction <= DockDirection.Right) {
-				parentPanel = splitPanels [sectionName];
-				splitPanels [sectionName] = oldPanel;
-			} else if (direction >= DockDirection.FarTop && direction <= DockDirection.FarRight) {
-				parentPanel = (SplitterPanel) splitPanels [sectionName].Parent.Parent;
-			}
-
-			splitPanels [newSectionName] = newPanel;
-
-			if (direction != DockDirection.Center) {
-				
-				oldPanel.Controls.Add (parentPanel.Controls [0]);
-				newPanel.Controls.Add (CreateTabControl (form));
-				parentPanel.Controls.Add (split);
-			} else {
-
-			}
 		}
 
 		private void onResizeBegin (object obj, EventArgs e) {
@@ -261,8 +206,6 @@ namespace CSharpControls.DockManager {
 				
 				if (panel == null) {
 					HidePanelFlaps ();
-					centerFlap.Location = new Point ((this.Width - flapSize) / 2, (this.Height - flapSize) / 2);
-					centerFlap.Show ();
 				} else {
 					ShowPanelFlaps (panel);
 				}
@@ -374,26 +317,6 @@ namespace CSharpControls.DockManager {
 			}
 		}
 
-		/*private void ShowFlaps (SplitterPanel panel) {
-			Point panelPos = this.PointToClient (panel.PointToScreen (new Point (0)));
-			Point [] flapPos = {
-				new Point (panelPos.X + (panel.Width - flapSize) / 2, panelPos.Y + (panel.Height - flapSize) / 2 - flapSize - 5),
-				new Point (panelPos.X + (panel.Width - flapSize) / 2, panelPos.Y + (panel.Height - flapSize) / 2 + flapSize + 5),
-				new Point (panelPos.X + (panel.Width - flapSize) / 2 - flapSize - 5, panelPos.Y + (panel.Height - flapSize) / 2),
-				new Point (panelPos.X + (panel.Width - flapSize) / 2 + flapSize + 5, panelPos.Y + (panel.Height - flapSize) / 2),
-				new Point (panelPos.X + (panel.Width - flapSize) / 2, panelPos.Y + (panel.Height - flapSize) / 2),
-				new Point ((this.Width - flapSize) / 2, 0),
-				new Point ((this.Width - flapSize) / 2, this.Height - flapSize),
-				new Point (0, (this.Height - flapSize) / 2),
-				new Point (this.Width - flapSize, (this.Height - flapSize) / 2),
-			};
-
-			for (int i = 0; i < flaps.Count; i++) {
-				flaps [i].Show ();
-				flaps [i].Location = flapPos [i];
-			}
-		}*/
-
 		private void HidePanelFlaps () {
 			for (int i = 0; i < 5; i++) {
 				flaps [i].Hide ();
@@ -408,65 +331,19 @@ namespace CSharpControls.DockManager {
 			}
 		}
 
-		/*private void HideFlaps () {
-			flaps.ForEach (flap => flap.Hide ());
-		}*/
-
-		private CSSSplitContainer GetSplitterPanelParent (CSSSplitContainer split, string name) {
-			CSSSplitContainer result = null;
-			
-			if (split == null) {
-				return null;
-			}
-
-			if (split.Panel1Name == name || split.Panel2Name == name) {
-				return split;
-			} else {
-				if (split.Panel1.Controls.Count > 0) {
-					result = GetSplitterPanelParent ((CSSSplitContainer) split.Panel1.Controls [0], name);
-				}
-
-				if (split == null && split.Panel2.Controls.Count > 0) {
-					result = GetSplitterPanelParent ((CSSSplitContainer) split.Panel2.Controls [0], name);
-				}
-			}
-
-			return result;
-		}
-
 		private SplitterPanel GetHoveredPanel () {
-			/*if (dockPanels.Count == 1) {
-				if (CursorOverControl (dockPanels [0])) {
-					return dockPanels [0];
-				}
-			} else if (dockPanels.Count > 1) {
-				for (int i = 1; i < dockPanels.Count; i++) {
-					SplitterPanel p = dockPanels.Values.ToArray ()[i];
-					if (CursorOverControl (p)) {
-						return p;
-					}
-				}
-			}*/
+			if (dockPanels.Count == 1 && CursorOverControl (dockPanels [0])) {
+				return dockPanels [0];
+			}
 
 			for (int i = 1; i < dockPanels.Count; i++) {
-				SplitterPanel p = dockPanels.Values.ToArray ()[i];
+				SplitterPanel p = dockPanels [i];
+
 				if (CursorOverControl (p)) {
 					return p;
 				}
 			}
 
-			return null;
-		}
-
-		private SplitterPanel GetHoverSection () {
-			SplitterPanel [] panels = splitPanels.Values.ToArray ();
-
-			foreach (SplitterPanel p in panels) {
-				if (CursorOverControl (p)) {
-					return p;
-				}
-			}
-			
 			return null;
 		}
 
@@ -474,7 +351,6 @@ namespace CSharpControls.DockManager {
 			return control.ClientRectangle.Contains (control.PointToClient (Cursor.Position));
 		}
 
-		private static int numDockPanels = 0;
 		private const int flapSize = 40;
 
 		public enum DockDirection {Top = 0, Bottom, Left, Right, Center, FarTop, FarBottom, FarLeft, FarRight}
