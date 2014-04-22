@@ -129,7 +129,11 @@ namespace CSharpControls.DockManager {
 
 				oldPanel.Controls.Add (panel.Controls [0]);
 				newPanel.Controls.Add (CreateTabControl (form));
-				dockPanels [numDockPanels++] = oldPanel;
+
+				if (oldPanel.Controls [0] is TabControl) {
+					dockPanels [numDockPanels++] = oldPanel;
+				}
+
 				dockPanels [numDockPanels++] = newPanel;
 				
 				if (split.Panel1.Controls [0] is SplitContainer) {
@@ -163,6 +167,8 @@ namespace CSharpControls.DockManager {
 					panelContainer.TabControl2 = null;
 				}
 			}
+
+			Debug.WriteLine (dockPanels.Count);
 		}
 
 		public void DockForm (string sectionName, Form form, string newSectionName, DockDirection direction) {
@@ -240,20 +246,34 @@ namespace CSharpControls.DockManager {
 					form.Opacity = 0.7;
 				}
 				
-				DragHoveredOnManager (form);
+				if (CursorOverControl (this)) {
+					DragHoveredOnManager ();
+				} else {
+					DragLeftManager ();
+				}
 			}
 		}
 
-		private void DragHoveredOnManager (Form form) {
+		private void DragHoveredOnManager () {
 			if (initialDocked) {
 				ShowFarFlaps ();
 				SplitterPanel panel = GetHoveredPanel ();
 				
 				if (panel == null) {
 					HidePanelFlaps ();
+					centerFlap.Location = new Point ((this.Width - flapSize) / 2, (this.Height - flapSize) / 2);
+					centerFlap.Show ();
 				} else {
 					ShowPanelFlaps (panel);
 				}
+
+				flaps.ForEach (flap => {
+					if (CursorOverControl (flap)) {
+						flap.BackColor = Color.FromArgb (255, flapColor);
+					} else {
+						flap.BackColor = flapColor;
+					}
+				});
 			} else {
 				if (CursorOverControl (this)) {
 					this.BackColor = flapColor;
@@ -263,25 +283,26 @@ namespace CSharpControls.DockManager {
 			}
 		}
 
+		private void DragLeftManager () {
+			HidePanelFlaps ();
+			HideFarFlaps ();
+		}
+
 		private void DragReleasedOnManager (Form form) {
 			if (initialDocked) {
-				//HideFlaps ();
-				Panel flap = flaps.Find (f => CursorOverControl (f));
+				HideFarFlaps ();
+				HidePanelFlaps ();
+
+				int index = flaps.FindIndex (f => CursorOverControl (f));
 				
-				if (flap == farTopFlap || flap == farBottomFlap || flap == farLeftFlap || flap == farBottomFlap) {
-
-				} else if (flap != null) {
-
-				}
-
-				if (flap != null) {
-					List <SplitterPanel> panels = splitPanels.Values.ToList ();
-					SplitterPanel panel = GetHoverSection ();
-					DockForm (splitPanels.Keys.ToList ()[panels.IndexOf (panel)], form, "awd", (DockDirection) flaps.IndexOf (flap));
+				if (index >= 5 && index <= 8) {
+					DockForm (dockPanels [0], form, (DockDirection) (index - 5));
+				} else if (index > -1) {
+					DockForm (GetHoveredPanel (), form, (DockDirection) index);
 				}
 			} else {
 				if (CursorOverControl (this)) {
-					DockInitialForm (form, "a");
+					DockInitialForm (form);
 				}
 					
 				this.BackColor = SystemColors.Control;
@@ -332,8 +353,8 @@ namespace CSharpControls.DockManager {
 			};
 
 			for (int i = 5; i < 9; i++) {
-				flaps [i].Show ();
 				flaps [i].Location = flapPos [i - 5];
+				flaps [i].Show ();
 			}
 		}
 
@@ -348,8 +369,8 @@ namespace CSharpControls.DockManager {
 			};
 
 			for (int i = 0; i < 5; i++) {
-				flaps [i].Show ();
 				flaps [i].Location = flapPos [i];
+				flaps [i].Show ();
 			}
 		}
 
@@ -376,12 +397,14 @@ namespace CSharpControls.DockManager {
 		private void HidePanelFlaps () {
 			for (int i = 0; i < 5; i++) {
 				flaps [i].Hide ();
+				flaps [i].BackColor = flapColor;
 			}
 		}
 
 		private void HideFarFlaps () {
 			for (int i = 5; i < 9; i++) {
 				flaps [i].Hide ();
+				flaps [i].BackColor = flapColor;
 			}
 		}
 
