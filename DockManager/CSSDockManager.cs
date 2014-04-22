@@ -7,8 +7,11 @@ using System.Diagnostics;
 //using System.ComponentModel;
 
 
-namespace CSharpControls {
+namespace CSharpControls.DockManager {
+
 	public class CSSDockManager:Panel {
+		public DockSplitContainer BaseSplitContainer = new DockSplitContainer ();
+
 		private Color flapColor = Color.FromArgb (128, Color.Red);
 		private TableLayoutPanel flapTable = new TableLayoutPanel ();
 		private List <Panel> flaps;
@@ -27,6 +30,8 @@ namespace CSharpControls {
 		
 		private Dictionary <string, SplitterPanel> splitPanels = new Dictionary<string,SplitterPanel> ();
 
+		private Dictionary <int, SplitterPanel> dockPanels = new Dictionary<int,SplitterPanel> ();  //panels that can be docked on
+
 		private bool dragStarted = false;
 		private bool dragEnded = false;
 
@@ -36,10 +41,14 @@ namespace CSharpControls {
 		public CSSDockManager () {
 			PrepareFlaps ();
 			
+			BaseSplitContainer.Dock = DockStyle.Fill;
+			BaseSplitContainer.Panel2Collapsed = true;
+			this.Controls.Add (BaseSplitContainer);
+			dockPanels [numDockPanels++] = BaseSplitContainer.Panel1;
 
 			initialSplit.Panel2Collapsed = true;
 			
-			this.Controls.Add (initialSplit);
+			//this.Controls.Add (initialSplit);
 			/*
 			awd.Interval = 250;
 			awd.Start ();
@@ -70,6 +79,90 @@ namespace CSharpControls {
 			splitPanels [newSectionName] = initialSplit.Panel1;
 			initialDocked = true;
 			initialSplit.Panel1.Controls.Add (CreateTabControl (form));
+		}
+
+		public void DockInitialForm (Form form) {
+			if (initialDocked) throw new Exception ("initial form already docked");
+
+			initialDocked = true;
+			BaseSplitContainer.Panel1.Controls.Add (CreateTabControl (form));
+			BaseSplitContainer.TabControl1 = (TabControl) BaseSplitContainer.Panel1.Controls [0];
+		}
+
+		public void DockForm (SplitterPanel panel, Form form, DockDirection direction) {
+			if (initialDocked == false) throw new Exception ("dock initial form first");
+			if (dockPanels.ContainsValue (panel) == false) throw new Exception ("not a valid panel");
+
+			if (direction == DockDirection.Center) {
+				TabControl tabControl = (TabControl) panel.Controls [0];
+				TabPage page = new TabPage (form.Text);
+				
+				foreach (Control c in form.Controls) {
+					page.Controls.Add (c);
+				}
+
+				tabControl.TabPages.Add (page);
+				form.Hide ();
+			} else {
+				DockSplitContainer split = new DockSplitContainer ();
+				split.Dock = DockStyle.Fill;
+				SplitterPanel oldPanel = null;
+				SplitterPanel newPanel = null;
+				
+				if (direction == DockDirection.Top) {
+					split.Orientation = Orientation.Horizontal;
+					oldPanel = split.Panel2;
+					newPanel = split.Panel1;
+				} else if (direction == DockDirection.Bottom) {
+					split.Orientation = Orientation.Horizontal;
+					oldPanel = split.Panel1;
+					newPanel = split.Panel2;
+				} else if (direction == DockDirection.Left) {
+					split.Orientation = Orientation.Vertical;
+					oldPanel = split.Panel2;
+					newPanel = split.Panel1;
+				} else if (direction == DockDirection.Right) {
+					split.Orientation = Orientation.Vertical;
+					oldPanel = split.Panel1;
+					newPanel = split.Panel2;
+				}
+
+				oldPanel.Controls.Add (panel.Controls [0]);
+				newPanel.Controls.Add (CreateTabControl (form));
+				dockPanels [numDockPanels++] = oldPanel;
+				dockPanels [numDockPanels++] = newPanel;
+				
+				if (split.Panel1.Controls [0] is SplitContainer) {
+					split.DockSplitContainer1 = (DockSplitContainer) split.Panel1.Controls [0];
+					split.TabControl1 = null;
+				} else {
+					split.TabControl1 = (TabControl) split.Panel1.Controls [0];
+					split.DockSplitContainer1 = null;
+				}
+				
+				if (split.Panel2.Controls [0] is SplitContainer) {
+					split.DockSplitContainer2 = (DockSplitContainer) split.Panel2.Controls [0];
+					split.TabControl2 = null;
+				} else {
+					split.TabControl2 = (TabControl) split.Panel2.Controls [0];
+					split.DockSplitContainer2 = null;
+				}
+
+				if (panel != dockPanels [0]) {
+					dockPanels.Remove (dockPanels.Keys.ToList ().Find (key => dockPanels [key] == panel));
+				}
+
+				panel.Controls.Add (split);
+				DockSplitContainer panelContainer = ((DockSplitContainer) panel.Parent);
+
+				if (panel == panelContainer.Panel1) {
+					panelContainer.DockSplitContainer1 = split;
+					panelContainer.TabControl1 = null;
+				} else {
+					panelContainer.DockSplitContainer2 = split;
+					panelContainer.TabControl2 = null;
+				}
+			}
 		}
 
 		public void DockForm (string sectionName, Form form, string newSectionName, DockDirection direction) {
@@ -146,16 +239,41 @@ namespace CSharpControls {
 					dragEnded = false;
 					form.Opacity = 0.7;
 				}
-
+				
 				DragHoveredOnManager (form);
+			}
+		}
+
+		private void DragHoveredOnManager (Form form) {
+			if (initialDocked) {
+				ShowFarFlaps ();
+				SplitterPanel panel = GetHoveredPanel ();
+				
+				if (panel == null) {
+					HidePanelFlaps ();
+				} else {
+					ShowPanelFlaps (panel);
+				}
+			} else {
+				if (CursorOverControl (this)) {
+					this.BackColor = flapColor;
+				} else {
+					this.BackColor = SystemColors.Control;
+				}
 			}
 		}
 
 		private void DragReleasedOnManager (Form form) {
 			if (initialDocked) {
-				HideFlaps ();
+				//HideFlaps ();
 				Panel flap = flaps.Find (f => CursorOverControl (f));
-					
+				
+				if (flap == farTopFlap || flap == farBottomFlap || flap == farLeftFlap || flap == farBottomFlap) {
+
+				} else if (flap != null) {
+
+				}
+
 				if (flap != null) {
 					List <SplitterPanel> panels = splitPanels.Values.ToList ();
 					SplitterPanel panel = GetHoverSection ();
@@ -170,37 +288,26 @@ namespace CSharpControls {
 			}
 		}
 
-		private void DragHoveredOnManager (Form form) {
-			if (initialDocked) {
-				SplitterPanel panel = GetHoverSection ();
-					
-				if (panel != null) {
-					ShowFlaps (panel);
-				} else {
-					HideFlaps ();
-				}
-			} else {
-				if (CursorOverControl (this)) {
-					this.BackColor = flapColor;
-				} else {
-					this.BackColor = SystemColors.Control;
-				}
-			}
-		}
-
 		private TabControl CreateTabControl (Form form) {
-			form.Hide ();
 			TabControl control = new TabControl ();
 			control.Dock = DockStyle.Fill;
 			
-			TabPage page = new TabPage (form.Text);
+			if (form != null) {
+				form.Hide ();
+				TabPage page = new TabPage (form.Text);
 			
-			foreach (Control c in form.Controls) {
-				page.Controls.Add (c);
+				foreach (Control c in form.Controls) {
+					page.Controls.Add (c);
+				}
+
+				control.TabPages.Add (page);
 			}
 
-			control.TabPages.Add (page);
 			return control;
+		}
+
+		private TabControl CreateTabControl () {
+			return CreateTabControl (null);
 		}
 
 		private void PrepareFlaps () {
@@ -212,10 +319,41 @@ namespace CSharpControls {
 				this.Controls.Add (flap);
 			});
 
-			HideFlaps ();
+			HideFarFlaps ();
+			HidePanelFlaps ();
 		}
 
-		private void ShowFlaps (SplitterPanel panel) {
+		private void ShowFarFlaps () {
+			Point [] flapPos = {
+				new Point ((this.Width - flapSize) / 2, 0),
+				new Point ((this.Width - flapSize) / 2, this.Height - flapSize),
+				new Point (0, (this.Height - flapSize) / 2),
+				new Point (this.Width - flapSize, (this.Height - flapSize) / 2),
+			};
+
+			for (int i = 5; i < 9; i++) {
+				flaps [i].Show ();
+				flaps [i].Location = flapPos [i - 5];
+			}
+		}
+
+		private void ShowPanelFlaps (SplitterPanel panel) {
+			Point panelPos = this.PointToClient (panel.PointToScreen (new Point (0)));
+			Point [] flapPos = {
+				new Point (panelPos.X + (panel.Width - flapSize) / 2, panelPos.Y + (panel.Height - flapSize) / 2 - flapSize - 5),
+				new Point (panelPos.X + (panel.Width - flapSize) / 2, panelPos.Y + (panel.Height - flapSize) / 2 + flapSize + 5),
+				new Point (panelPos.X + (panel.Width - flapSize) / 2 - flapSize - 5, panelPos.Y + (panel.Height - flapSize) / 2),
+				new Point (panelPos.X + (panel.Width - flapSize) / 2 + flapSize + 5, panelPos.Y + (panel.Height - flapSize) / 2),
+				new Point (panelPos.X + (panel.Width - flapSize) / 2, panelPos.Y + (panel.Height - flapSize) / 2),
+			};
+
+			for (int i = 0; i < 5; i++) {
+				flaps [i].Show ();
+				flaps [i].Location = flapPos [i];
+			}
+		}
+
+		/*private void ShowFlaps (SplitterPanel panel) {
 			Point panelPos = this.PointToClient (panel.PointToScreen (new Point (0)));
 			Point [] flapPos = {
 				new Point (panelPos.X + (panel.Width - flapSize) / 2, panelPos.Y + (panel.Height - flapSize) / 2 - flapSize - 5),
@@ -233,11 +371,23 @@ namespace CSharpControls {
 				flaps [i].Show ();
 				flaps [i].Location = flapPos [i];
 			}
+		}*/
+
+		private void HidePanelFlaps () {
+			for (int i = 0; i < 5; i++) {
+				flaps [i].Hide ();
+			}
 		}
 
-		private void HideFlaps () {
-			flaps.ForEach (flap => flap.Hide ());
+		private void HideFarFlaps () {
+			for (int i = 5; i < 9; i++) {
+				flaps [i].Hide ();
+			}
 		}
+
+		/*private void HideFlaps () {
+			flaps.ForEach (flap => flap.Hide ());
+		}*/
 
 		private CSSSplitContainer GetSplitterPanelParent (CSSSplitContainer split, string name) {
 			CSSSplitContainer result = null;
@@ -261,6 +411,30 @@ namespace CSharpControls {
 			return result;
 		}
 
+		private SplitterPanel GetHoveredPanel () {
+			/*if (dockPanels.Count == 1) {
+				if (CursorOverControl (dockPanels [0])) {
+					return dockPanels [0];
+				}
+			} else if (dockPanels.Count > 1) {
+				for (int i = 1; i < dockPanels.Count; i++) {
+					SplitterPanel p = dockPanels.Values.ToArray ()[i];
+					if (CursorOverControl (p)) {
+						return p;
+					}
+				}
+			}*/
+
+			for (int i = 1; i < dockPanels.Count; i++) {
+				SplitterPanel p = dockPanels.Values.ToArray ()[i];
+				if (CursorOverControl (p)) {
+					return p;
+				}
+			}
+
+			return null;
+		}
+
 		private SplitterPanel GetHoverSection () {
 			SplitterPanel [] panels = splitPanels.Values.ToArray ();
 
@@ -277,9 +451,9 @@ namespace CSharpControls {
 			return control.ClientRectangle.Contains (control.PointToClient (Cursor.Position));
 		}
 
-		
+		private static int numDockPanels = 0;
+		private const int flapSize = 40;
 
 		public enum DockDirection {Top = 0, Bottom, Left, Right, Center, FarTop, FarBottom, FarLeft, FarRight}
-		private const int flapSize = 40;
 	}
 }

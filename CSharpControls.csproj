@@ -41,10 +41,11 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="CSSDockManager.cs">
+    <Compile Include="DockManager\CSSDockManager.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="CSSSplitContainer.cs" />
+    <Compile Include="DockManager\CSSSplitContainer.cs" />
+    <Compile Include="DockManager\DockSplitContainer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup />

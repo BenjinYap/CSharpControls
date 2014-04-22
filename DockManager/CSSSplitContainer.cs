@@ -1,6 +1,6 @@
 ﻿using System.Windows.Forms;
 
-namespace CSharpControls {
+namespace CSharpControls.DockManager {
 	public class CSSSplitContainer:SplitContainer {
 		public string Panel1Name = null;
 		public string Panel2Name = null;
