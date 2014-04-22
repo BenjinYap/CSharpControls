@@ -83,6 +83,7 @@ namespace CSharpControls.DockManager {
 
 		public void DockForm (SplitterPanel panel, Form form, DockDirection direction) {
 			if (initialDocked == false) throw new Exception ("dock initial form first");
+			if (dockableForms.Contains (form) == false) throw new Exception ("not a dockable form");
 			if (dockPanels.Contains (panel) == false) throw new Exception ("not a valid panel");
 
 			if (direction == DockDirection.Center) {
@@ -94,6 +95,7 @@ namespace CSharpControls.DockManager {
 				}
 
 				tabControl.TabPages.Add (page);
+				tabControl.SelectedTab = page;
 				form.Hide ();
 			} else {
 				DockSplitContainer split = new DockSplitContainer ();
@@ -159,8 +161,12 @@ namespace CSharpControls.DockManager {
 					panelContainer.TabControl2 = null;
 				}
 			}
+		}
 
-			Debug.WriteLine (dockPanels.Count);
+		public void UndockForm (Form form) {
+			if (dockableForms.Contains (form) == false) throw new Exception ("not a dockable form");
+
+
 		}
 
 		private void onResizeBegin (object obj, EventArgs e) {
@@ -229,6 +235,7 @@ namespace CSharpControls.DockManager {
 		private void DragLeftManager () {
 			HidePanelFlaps ();
 			HideFarFlaps ();
+			this.BackColor = SystemColors.Control;
 		}
 
 		private void DragReleasedOnManager (Form form) {
@@ -252,26 +259,22 @@ namespace CSharpControls.DockManager {
 			}
 		}
 
+
+
 		private TabControl CreateTabControl (Form form) {
 			TabControl control = new TabControl ();
 			control.Dock = DockStyle.Fill;
 			
-			if (form != null) {
-				form.Hide ();
-				TabPage page = new TabPage (form.Text);
+			form.Hide ();
+			TabPage page = new TabPage (form.Text);
 			
-				foreach (Control c in form.Controls) {
-					page.Controls.Add (c);
-				}
-
-				control.TabPages.Add (page);
+			foreach (Control c in form.Controls) {
+				page.Controls.Add (c);
 			}
 
-			return control;
-		}
+			control.TabPages.Add (page);
 
-		private TabControl CreateTabControl () {
-			return CreateTabControl (null);
+			return control;
 		}
 
 		private void PrepareFlaps () {
