@@ -41,12 +41,21 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="CSSTabControl.cs" />
+    <Compile Include="CSSTabControl.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="DockManager\CSSDockManager.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="DockManager\CSSSplitContainer.cs" />
-    <Compile Include="DockManager\DockSplitContainer.cs" />
+    <Compile Include="DockManager\CSSSplitContainer.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="DockManager\DockSplitContainer.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="DockManager\DockTabControlPanel.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup />

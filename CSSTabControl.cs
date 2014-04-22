@@ -8,7 +8,7 @@ namespace CSharpControls {
 		/// <summary>
 		/// Gets or sets a value indicating whether the tabs can be dragged when the cursor is not on the tab bar.
 		/// </summary>
-		public bool AllowOutOfBoundsDragging = true;
+		public bool AllowTabReorderingOutsideHeader = true;
 
 		public CSSTabControl () {
 			this.MouseLeave += onMouseLeave;
@@ -16,7 +16,7 @@ namespace CSharpControls {
 			this.MouseUp += onMouseUp;
 		}
 
-		public void StopTabDrag () {
+		public void StopTabReordering () {
 			this.MouseMove -= onMouseMove;
 		}
 
@@ -36,13 +36,12 @@ namespace CSharpControls {
 
 		private void onMouseMove (object obj, EventArgs e) {
 			Point pos = this.PointToClient (Cursor.Position);
-			bool withinBounds = false;
 			
 			for (int i = 0; i < this.TabPages.Count; i++) {
 				Rectangle rect = this.GetTabRect (i);
 
 				if (i != this.SelectedIndex) {
-					if (AllowOutOfBoundsDragging) {
+					if (AllowTabReorderingOutsideHeader) {
 						if (pos.X >= rect.Left && pos.X <= rect.Right) {
 							TabPage selectedTab = this.SelectedTab;
 							this.TabPages.Remove (selectedTab);
@@ -58,13 +57,7 @@ namespace CSharpControls {
 						}
 					}
 				}
-
-				if (rect.Contains (pos)) withinBounds = true;
 			}
-
-			if (withinBounds == false && TabDraggedOutOfBounds != null) TabDraggedOutOfBounds (this, EventArgs.Empty);
 		}
-
-		public event EventHandler TabDraggedOutOfBounds;
 	}
 }
