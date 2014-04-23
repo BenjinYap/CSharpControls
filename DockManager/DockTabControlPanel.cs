@@ -20,8 +20,6 @@ namespace CSharpControls.DockManager {
 
 			TabControl.Dock = DockStyle.Fill;
 			this.Controls.Add (TabControl);
-			TabControl.TabPages.Add ("one");
-			TabControl.TabPages.Add ("two");
 
 			TabControl.MouseDown += onTabControlMouseDown;
 			TabControl.MouseUp += onTabControlMouseUp;
