@@ -20,6 +20,14 @@ namespace CSharpControls {
 			this.MouseMove -= onMouseMove;
 		}
 
+		protected override void Dispose (bool disposing) {
+			base.Dispose (disposing);
+
+			this.MouseLeave -= onMouseLeave;
+			this.MouseDown -= onMouseDown;
+			this.MouseUp -= onMouseUp;
+		}
+
 		private void onMouseLeave (object obj, EventArgs e) {
 			this.MouseMove -= onMouseMove;
 		}
