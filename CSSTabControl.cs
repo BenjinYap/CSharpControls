@@ -47,6 +47,7 @@ namespace CSharpControls {
 			
 			for (int i = 0; i < this.TabPages.Count; i++) {
 				Rectangle rect = this.GetTabRect (i);
+				rect.Inflate (-1, 0);
 
 				if (i != this.SelectedIndex) {
 					if (AllowTabReorderingOutsideHeader) {
