@@ -4,13 +4,15 @@ using System.Windows.Forms;
 using System;
 using System.Linq;
 using System.Diagnostics;
-//using System.ComponentModel;
+using System.Text;
+using System.IO;
+using System.Xml;
 
 
 namespace CSharpControls.DockManager {
 
 	public class CSSDockManager:Panel {
-		public DockSplitContainer BaseSplitContainer = new DockSplitContainer ();
+		private Panel basePanel = new Panel ();
 
 		private Color flapColor = Color.FromArgb (128, Color.Red);
 		private TableLayoutPanel flapTable = new TableLayoutPanel ();
@@ -28,77 +30,169 @@ namespace CSharpControls.DockManager {
 		private List <Form> dockableForms = new List<Form> ();
 		private Dictionary <Form, Size> formSizes = new Dictionary<Form,Size> ();
 		
-		private List <SplitterPanel> dockPanels = new List<SplitterPanel> ();
+		private List <DockFormInfo> formInfos = new List<DockFormInfo> ();
+
+		private List <Panel> dockablePanels = new List<Panel> ();
 
 		private bool dragStarted = false;
 		private bool dragEnded = false;
 
-		private CSSSplitContainer initialSplit = new CSSSplitContainer ();
-		private bool initialDocked = false;
+		private bool atLeastOneFormDocked = false;
 
 		public CSSDockManager () {
 			PrepareFlaps ();
 			
-			BaseSplitContainer.Dock = DockStyle.Fill;
-			BaseSplitContainer.Panel2Collapsed = true;
-			this.Controls.Add (BaseSplitContainer);
-			dockPanels.Add (BaseSplitContainer.Panel1);
-
-			initialSplit.Panel2Collapsed = true;
-			
-			//this.Controls.Add (initialSplit);
-			/*
-			awd.Interval = 250;
-			awd.Start ();
-			awd.Tick += (a, b) => {
-				SplitterPanel p = GetHoverSection ();
-
-				if (p != null) {
-					p.BackColor = Color.Green;
-				}
-			};*/
+			basePanel.Dock = DockStyle.Fill;
+			this.Controls.Add (basePanel);
+			dockablePanels.Add (basePanel);
 		}
 
-		private Timer awd = new Timer ();
+		public void awd () {
+			
+		}
 
-		public void RegisterDockableForm (Form form) {
+		public void RegisterDockableForm (string name, Form form) {
 			dockableForms.Add (form);
 			formSizes.Add (form, new Size ());
 			form.ResizeBegin += onResizeBegin;
 			form.ResizeEnd += onResizeEnd;
+
+			DockFormInfo info = new DockFormInfo ();
+			info.Name = name;
+			info.Form = form;
+			info.Visible = form.Visible;
+			info.Docked = false;
+			formInfos.Add (info);
 		}
 
-		public void UnregisterDockableForm (Form form) {
+		public void UnregisterDockableForm (string name, Form form) {
 			dockableForms.Remove (form);
 			formSizes.Remove (form);
 		}
 
-		public void DockInitialForm (Form form) {
-			if (initialDocked) throw new Exception ("initial form already docked");
+		public void LoadLayout () {
+			XmlDocument doc = new XmlDocument ();
+			doc.Load (layoutFile);
+			XmlNode root = doc ["cssDockManager"];
+			XmlNode node = root.ChildNodes [0];
 
-			initialDocked = true;
-			BaseSplitContainer.Panel1.Controls.Add (CreateTabControlPanel (form));
-			//BaseSplitContainer.TabControl1 = (TabControl) BaseSplitContainer.Panel1.Controls [0];
+			if (node.Name == "tabControl") {
+				string [] formNames = node.Attributes ["forms"].InnerText.Split (',');
+				
+				for (int i = 0; i < formNames.Length; i++) {
+					DockForm (basePanel, GetForm (formNames [i]), DockDirection.Center);
+				}
+			} else {
+				LoadLayout (basePanel, DockDirection.Center, node);
+			}
 		}
 
-		public void DockForm (SplitterPanel panel, Form form, DockDirection direction) {
-			if (initialDocked == false) throw new Exception ("dock initial form first");
-			if (dockableForms.Contains (form) == false) throw new Exception ("not a dockable form");
-			if (dockPanels.Contains (panel) == false) throw new Exception ("not a valid panel");
+		private Panel LoadLayout (Panel panel, DockDirection direction, XmlNode node) {
+			Panel returnPanel = null;
+			XmlNode node1 = node.ChildNodes [0];
+			XmlNode node2 = node.ChildNodes [1];
 
-			if (direction == DockDirection.Center) {  //dock center, just add to the tab control
-				DockTabControlPanel tabControlPanel = (DockTabControlPanel) panel.Controls [0];
-				TabPage page = new TabPage (form.Text);
+			if (node1.Name == "tabControl") {
+				string [] formNames = node1.Attributes ["forms"].InnerText.Split (',');
+				DockForm (panel, GetForm (formNames [0]), direction);
+				returnPanel = GetDockablePanel (formNames [0]);
 				
-				foreach (Control c in form.Controls) {
-					page.Controls.Add (c);
+				for (int i = 1; i < formNames.Length; i++) {
+					DockForm (returnPanel, GetForm (formNames [i]), DockDirection.Center);
+				}
+			} else {
+				returnPanel = LoadLayout (panel, DockDirection.Center, node1);
+			}
+
+			direction = (node.Attributes ["orientation"].InnerText == "Vertical") ? DockDirection.Right : DockDirection.Bottom;
+			
+			if (node2.Name == "tabControl") {
+				string [] formNames = node2.Attributes ["forms"].InnerText.Split (',');
+				DockForm (returnPanel, GetForm (formNames [0]), direction);
+				
+				for (int i = 1; i < formNames.Length; i++) {
+					DockForm (GetDockablePanel (formNames [0]), GetForm (formNames [i]), DockDirection.Center);
+				}
+			} else {
+				LoadLayout (returnPanel, direction, node2);
+			}
+
+			return returnPanel;
+		}
+
+		public string SaveLayout () {
+			XmlWriterSettings settings = new XmlWriterSettings ();
+			settings.OmitXmlDeclaration = true;
+			settings.Indent = true;
+
+			//using (XmlWriter w = XmlWriter.Create (sb, settings)) {
+			using (XmlWriter w = XmlWriter.Create (layoutFile, settings)) {
+				w.WriteStartElement ("cssDockManager");
+
+				if (atLeastOneFormDocked) {
+					if (basePanel.Controls [0] is DockTabControlPanel) {
+						SaveTabControlPanel (w, (DockTabControlPanel) basePanel.Controls [0]);
+					} else {
+						SaveSplitContainer (w, (SplitContainer) basePanel.Controls [0]);
+					}
 				}
 
-				tabControlPanel.TabControl.TabPages.Add (page);
-				tabControlPanel.TabControl.SelectedTab = page;
-				form.Hide ();
+				w.WriteEndElement ();
+			}
+			
+			return "";
+		}
+
+		private void SaveTabControlPanel (XmlWriter w, DockTabControlPanel tabControlPanel) {
+			w.WriteStartElement ("tabControl");
+			TabControl tabControl = tabControlPanel.TabControl;
+			string formNames = "";
+
+			foreach (TabPage tab in tabControl.TabPages) {
+				formInfos.ForEach (info => {
+					if (info.TabPage == tab) formNames += "," + info.Name;
+				});
+			}
+
+			formNames = formNames.Substring (1);
+			w.WriteAttributeString ("forms", formNames);
+			w.WriteEndElement ();
+		}
+
+		private void SaveSplitContainer (XmlWriter w, SplitContainer split) {
+			w.WriteStartElement ("split");
+			w.WriteAttributeString ("orientation", split.Orientation.ToString ());
+
+			new List <SplitterPanel> {split.Panel1, split.Panel2}.ForEach (panel => {
+				if (panel.Controls [0] is DockTabControlPanel) {
+					SaveTabControlPanel (w, (DockTabControlPanel) panel.Controls [0]);
+				} else {
+					SaveSplitContainer (w, (SplitContainer) panel.Controls [0]);
+				}
+			});
+			
+			w.WriteEndElement ();
+		}
+
+		public void DockForm (Panel panel, Form form, DockDirection direction) {
+			//if (atLeastOneFormDocked == false) throw new Exception ("dock initial form first");
+			if (formInfos.Find (info => info.Form == form) == null) throw new Exception ("not a dockable form");
+			if (dockablePanels.Contains (panel) == false) throw new Exception ("not a valid panel");
+			
+			if (atLeastOneFormDocked == false) {
+				atLeastOneFormDocked = true;
+				basePanel.Controls.Add (new DockTabControlPanel ());
+				direction = DockDirection.Center;
+			}
+
+			DockFormInfo formInfo = GetFormInfo (form);
+			DockTabControlPanel tabControlPanel = null;
+			TabPage tab = null;
+
+			if (direction == DockDirection.Center) {  //dock center, just add to the tab control
+				tabControlPanel = (DockTabControlPanel) panel.Controls [0];
 			} else {  //not dock center, do a lot of things
-				DockSplitContainer split = new DockSplitContainer ();  //the new splitcontainer that will hold the old and new stuff
+				SplitContainer split = new SplitContainer ();  //the new splitcontainer that will hold the old and new stuff
 				split.Dock = DockStyle.Fill;
 				SplitterPanel oldPanel = null;
 				SplitterPanel newPanel = null;
@@ -123,45 +217,38 @@ namespace CSharpControls.DockManager {
 				}
 
 				oldPanel.Controls.Add (panel.Controls [0]);  //add the panel's current controls to the "old" panel of the new split
-				newPanel.Controls.Add (CreateTabControlPanel (form));  //add the new form's controls to the "new" panel of the new split
-
-				if (oldPanel.Controls [0] is DockTabControlPanel) {  //add the "old" panel to the dockable panels only if it has a tab control panel
-					dockPanels.Add (oldPanel);
-				}
-
-				dockPanels.Add (newPanel);  //add the "new" panel to the dockable panels
-
-				if (split.Panel1.Controls [0] is SplitContainer) {
-					//split.DockSplitContainer1 = (DockSplitContainer) split.Panel1.Controls [0];
-					//split.TabControl1 = null;
-				} else {
-					//split.TabControl1 = (TabControl) split.Panel1.Controls [0];
-					//split.DockSplitContainer1 = null;
-				}
 				
-				if (split.Panel2.Controls [0] is SplitContainer) {
-					//split.DockSplitContainer2 = (DockSplitContainer) split.Panel2.Controls [0];
-					//split.TabControl2 = null;
-				} else {
-					//split.TabControl2 = (TabControl) split.Panel2.Controls [0];
-					//split.DockSplitContainer2 = null;
+				tabControlPanel = new DockTabControlPanel ();
+				tabControlPanel.Dock = DockStyle.Fill;
+				newPanel.Controls.Add (tabControlPanel);  //add the new form's controls to the "new" panel of the new split
+				
+				if (oldPanel.Controls [0] is DockTabControlPanel) {  //add the "old" panel to the dockable panels only if it has a tab control panel
+					dockablePanels.Add (oldPanel);
 				}
 
-				if (panel != dockPanels [0]) {  //if the target panel is not the first panel
-					dockPanels.Remove (panel);  //remove the target panel from the dockable panels since it now contains a split
+				dockablePanels.Add (newPanel);  //add the "new" panel to the dockable panels
+
+				if (panel != dockablePanels [0]) {  //if the target panel is not the first panel
+					dockablePanels.Remove (panel);  //remove the target panel from the dockable panels since it now contains a split
 				}
 
 				panel.Controls.Add (split);  //the target panel now contains the split instead of its original tab control panel
-				DockSplitContainer panelContainer = ((DockSplitContainer) panel.Parent);
-
-				if (panel == panelContainer.Panel1) {
-					//panelContainer.DockSplitContainer1 = split;
-					//panelContainer.TabControl1 = null;
-				} else {
-					//panelContainer.DockSplitContainer2 = split;
-					//panelContainer.TabControl2 = null;
-				}
 			}
+
+			tab = new TabPage (form.Text);
+				
+			foreach (Control c in form.Controls) {
+				tab.Controls.Add (c);
+			}
+				
+			tabControlPanel.TabControl.TabPages.Add (tab);
+			tabControlPanel.TabControl.SelectedTab = tab;
+			
+			formInfo.Docked = true;
+			form.Hide ();
+			formInfo.TabPage = tab;
+			formInfo.TabControl = tabControlPanel.TabControl;
+			formInfo.TabIndex =	formInfo.TabControl.SelectedIndex;
 		}
 
 		public void UndockForm (Form form) {
@@ -215,9 +302,9 @@ namespace CSharpControls.DockManager {
 		}
 
 		private void DragHoveredOnManager () {
-			if (initialDocked) {
+			if (atLeastOneFormDocked) {
 				ShowFarFlaps ();
-				SplitterPanel panel = GetHoveredPanel ();
+				Panel panel = GetHoveredPanel ();
 				
 				if (panel == null) {
 					HidePanelFlaps ();
@@ -248,58 +335,26 @@ namespace CSharpControls.DockManager {
 		}
 
 		private void DragReleasedOnManager (Form form) {
-			if (initialDocked) {
+			if (atLeastOneFormDocked) {
 				HideFarFlaps ();
 				HidePanelFlaps ();
 
 				int index = flaps.FindIndex (f => CursorOverControl (f));
 				
 				if (index >= 5 && index <= 8) {  //released over far flaps
-					DockForm (dockPanels [0], form, (DockDirection) (index - 5));
+					DockForm (basePanel, form, (DockDirection) (index - 5));
 				} else if (index > -1) {  //released over panel flaps
 					DockForm (GetHoveredPanel (), form, (DockDirection) index);
 				}
 			} else {
 				if (CursorOverControl (this)) {
-					DockInitialForm (form);
+					DockForm (basePanel, form, DockDirection.Center);
 				}
 					
 				this.BackColor = SystemColors.Control;
 			}
 		}
-
-		private DockTabControlPanel CreateTabControlPanel (Form form) {
-			form.Hide ();
-			DockTabControlPanel panel = new DockTabControlPanel ();
-			panel.Dock = DockStyle.Fill;
-			panel.PanelUndocking += onPanelUndocking;
-			panel.TabUndocking += onTabUndocking;
-			TabPage page = new TabPage (form.Text);
-			
-			foreach (Control c in form.Controls) {
-				page.Controls.Add (c);
-			}
-
-			panel.TabControl.TabPages.Add (page);
-			return panel;
-		}
-
-		private TabControl CreateTabControl (Form form) {
-			TabControl control = new TabControl ();
-			control.Dock = DockStyle.Fill;
-			
-			form.Hide ();
-			TabPage page = new TabPage (form.Text);
-			
-			foreach (Control c in form.Controls) {
-				page.Controls.Add (c);
-			}
-
-			control.TabPages.Add (page);
-
-			return control;
-		}
-
+		
 		private void PrepareFlaps () {
 			flaps = new List<Panel> {topFlap, bottomFlap, leftFlap, rightFlap, centerFlap, farTopFlap, farBottomFlap, farLeftFlap, farRightFlap};
 
@@ -327,7 +382,7 @@ namespace CSharpControls.DockManager {
 			}
 		}
 
-		private void ShowPanelFlaps (SplitterPanel panel) {
+		private void ShowPanelFlaps (Panel panel) {
 			Point panelPos = this.PointToClient (panel.PointToScreen (new Point (0)));
 			Point [] flapPos = {  //flap positions are a cross shape in the center of the target panel
 				new Point (panelPos.X + (panel.Width - flapSize) / 2, panelPos.Y + (panel.Height - flapSize) / 2 - flapSize - 5),
@@ -357,22 +412,49 @@ namespace CSharpControls.DockManager {
 			}
 		}
 
-		private SplitterPanel GetHoveredPanel () {
+		private Panel GetHoveredPanel () {
 			//if the first panel is the only dockable panel, check it for hover
-			if (dockPanels.Count == 1 && CursorOverControl (dockPanels [0])) {
-				return dockPanels [0];
-			}
+			if (dockablePanels.Count == 1 && CursorOverControl (basePanel)) return basePanel;
 
 			//otherwise check every dockable panel except the first one
-			for (int i = 1; i < dockPanels.Count; i++) {
-				SplitterPanel p = dockPanels [i];
-
-				if (CursorOverControl (p)) {
-					return p;
-				}
+			for (int i = 1; i < dockablePanels.Count; i++) {
+				if (CursorOverControl (dockablePanels [i])) return dockablePanels [i];
 			}
 
 			return null;
+		}
+
+		private Panel GetDockablePanel (Point cursor) {
+			foreach (Panel panel in dockablePanels) {
+				if (panel.ClientRectangle.Contains (panel.PointToClient (cursor))) return panel;
+			}
+
+			return null;
+		}
+
+		//name is the name of form that the panel should contain
+		private Panel GetDockablePanel (string name) {
+			DockFormInfo formInfo = formInfos.Find (info => info.Name == name);
+
+			if (basePanel.Controls [0] == formInfo.TabControl.Parent) return basePanel;
+
+			for (int i = 1; i < dockablePanels.Count; i++) {
+				Panel panel = dockablePanels [i];
+				
+				DockTabControlPanel tabControlPanel = (DockTabControlPanel) panel.Controls [0];
+
+				if (tabControlPanel == formInfo.TabControl.Parent) return panel;
+			}
+
+			return null;
+		}
+
+		private DockFormInfo GetFormInfo (Form form) {
+			return formInfos.Find (info => info.Form == form);
+		}
+
+		private Form GetForm (string name) {
+			return formInfos.Find (info => info.Name == name).Form;
 		}
 
 		private bool CursorOverControl (Control control) {
@@ -380,6 +462,7 @@ namespace CSharpControls.DockManager {
 		}
 
 		private const int flapSize = 40;
+		private const string layoutFile = "cssDockManagerLayout.xml";
 
 		public enum DockDirection {Top = 0, Bottom, Left, Right, Center, FarTop, FarBottom, FarLeft, FarRight}
 	}

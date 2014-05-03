@@ -47,9 +47,7 @@
     <Compile Include="DockManager\CSSDockManager.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="DockManager\CSSSplitContainer.cs">
-      <SubType>Component</SubType>
-    </Compile>
+    <Compile Include="DockManager\DockFormInfo.cs" />
     <Compile Include="DockManager\DockSplitContainer.cs">
       <SubType>Component</SubType>
     </Compile>

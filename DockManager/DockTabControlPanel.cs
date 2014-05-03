@@ -4,7 +4,7 @@ using System.Drawing;
 using System;
 
 namespace CSharpControls.DockManager {
-	public class DockTabControlPanel:Panel {
+	internal class DockTabControlPanel:Panel {
 		public CSSTabControl TabControl = new CSSTabControl ();
 		
 		internal event DockEventHandler PanelUndocking;
@@ -14,6 +14,7 @@ namespace CSharpControls.DockManager {
 		private bool tabUndocking = false;
 
 		public DockTabControlPanel () {
+			this.Dock = DockStyle.Fill;
 			this.MouseDown += onMouseDown;
 			this.MouseUp += onMouseUp;
 			this.LostFocus += onMouseUp;
