@@ -13,6 +13,8 @@ using System.Runtime.InteropServices;
 namespace CSharpControls.DockManager {
 
 	public class CSSDockManager:Panel {
+		public bool AutoSaveLayout = true;
+
 		private Panel basePanel = new Panel ();
 
 		private Color flapColor = Color.FromArgb (128, Color.Red);
@@ -70,9 +72,14 @@ namespace CSharpControls.DockManager {
 		}
 
 		public void LoadLayout () {
+			if (File.Exists (layoutFile) == false) return;
+
 			XmlDocument doc = new XmlDocument ();
 			doc.Load (layoutFile);
 			XmlNode root = doc ["cssDockManager"];
+
+			if (root.ChildNodes.Count <= 0) return;
+
 			XmlNode node = root.ChildNodes [0];
 
 			if (node.Name == "tabControl") {
@@ -84,6 +91,77 @@ namespace CSharpControls.DockManager {
 			} else {
 				LoadLayout (basePanel, DockDirection.Center, node);
 			}
+		}
+
+		public string SaveLayout () {
+			XmlWriterSettings settings = new XmlWriterSettings ();
+			settings.OmitXmlDeclaration = true;
+			settings.Indent = true;
+
+			//using (XmlWriter w = XmlWriter.Create (sb, settings)) {
+			using (XmlWriter w = XmlWriter.Create (layoutFile, settings)) {
+				w.WriteStartElement ("cssDockManager");
+
+				if (atLeastOneFormDocked) {
+					if (basePanel.Controls [0] is DockTabControlPanel) {
+						SaveTabControlPanel (w, (DockTabControlPanel) basePanel.Controls [0]);
+					} else {
+						SaveSplitContainer (w, (SplitContainer) basePanel.Controls [0]);
+					}
+				}
+
+				w.WriteEndElement ();
+			}
+			
+			return "";
+		}
+
+		public void awd () {
+			Debug.WriteLine (formInfos [2].TabPage);
+		}
+
+		private void onResizeBegin (object obj, EventArgs e) {
+			Form form = (Form) obj;
+			formSizes [form] = form.Size;
+			form.LocationChanged += onLocationChanged;
+		}
+
+		private void onResizeEnd (object obj, EventArgs e) {
+			Form form = (Form) obj;
+			form.LocationChanged -= onLocationChanged;
+
+			if (dragEnded == false) {
+				dragStarted = false;
+				dragEnded = true;
+				form.Opacity = 1;
+				DragReleasedOnManager (form);
+			}
+		}
+
+		private void onLocationChanged (object obj, EventArgs e) {
+			Form form = (Form) obj;
+			
+			if (formSizes [form] == form.Size) {  //this means the form was actually moved, not resized
+				if (dragStarted == false) {
+					dragStarted = true;
+					dragEnded = false;
+					form.Opacity = 0.7;
+				}
+				
+				if (CursorOverControl (this)) {
+					DragHoveredOnManager ();
+				} else {
+					DragLeftManager ();
+				}
+			}
+		}
+
+		private void onPanelUndocking (object obj, EventArgs e) {
+			Debug.Write ("A");
+		}
+
+		private void onTabUndocking (object obj, DockEventArgs e) {
+			UndockForm (formInfos.Find (info => info.TabPage == e.TabPage));
 		}
 
 		private Panel LoadLayout (Panel panel, DockDirection direction, XmlNode node) {
@@ -119,29 +197,6 @@ namespace CSharpControls.DockManager {
 			return returnPanel;
 		}
 
-		public string SaveLayout () {
-			XmlWriterSettings settings = new XmlWriterSettings ();
-			settings.OmitXmlDeclaration = true;
-			settings.Indent = true;
-
-			//using (XmlWriter w = XmlWriter.Create (sb, settings)) {
-			using (XmlWriter w = XmlWriter.Create (layoutFile, settings)) {
-				w.WriteStartElement ("cssDockManager");
-
-				if (atLeastOneFormDocked) {
-					if (basePanel.Controls [0] is DockTabControlPanel) {
-						SaveTabControlPanel (w, (DockTabControlPanel) basePanel.Controls [0]);
-					} else {
-						SaveSplitContainer (w, (SplitContainer) basePanel.Controls [0]);
-					}
-				}
-
-				w.WriteEndElement ();
-			}
-			
-			return "";
-		}
-
 		private void SaveTabControlPanel (XmlWriter w, DockTabControlPanel tabControlPanel) {
 			w.WriteStartElement ("tabControl");
 			TabControl tabControl = tabControlPanel.TabControl;
@@ -171,58 +226,6 @@ namespace CSharpControls.DockManager {
 			});
 			
 			w.WriteEndElement ();
-		}
-
-		private void UndockForm (DockFormInfo formInfo) {
-			DockTabControlPanel tabControlPanel = (DockTabControlPanel) formInfo.TabControl.Parent;
-			TabControl tabControl = formInfo.TabControl;
-			tabControl.TabPages.Remove (formInfo.TabPage);
-			
-			foreach (Control c in formInfo.TabPage.Controls) {
-				formInfo.Form.Controls.Add (c);
-			}
-			
-			formInfo.Form.Location = new Point (Cursor.Position.X - 80, Cursor.Position.Y - 15);
-			formInfo.Form.Show ();
-			ReleaseCapture ();
-			formInfo.TabControl = null;
-			formInfo.TabPage = null;
-			formInfo.Docked = false;
-
-			if (tabControl.TabPages.Count <= 0) {
-				if (tabControlPanel.Parent == basePanel) {
-					tabControlPanel.PanelUndocking -= onPanelUndocking;
-					tabControlPanel.TabUndocking -= onTabUndocking;
-					tabControlPanel.Parent.Controls.Remove (tabControlPanel);
-					atLeastOneFormDocked = false;
-				} else {
-					SplitContainer split = (SplitContainer) tabControlPanel.Parent.Parent;
-					Panel parentPanel = (Panel) split.Parent;
-					Panel oldPanel = null;
-					Panel deadPanel = null;
-
-					if (tabControlPanel.Parent == split.Panel2) {
-						oldPanel = split.Panel1;
-						deadPanel = split.Panel2;
-					} else {
-						oldPanel = split.Panel2;
-						deadPanel = split.Panel1;
-					}
-				
-					tabControlPanel.PanelUndocking -= onPanelUndocking;
-					tabControlPanel.TabUndocking -= onTabUndocking;
-					tabControlPanel.Parent.Controls.Remove (tabControlPanel);
-					parentPanel.Controls.Remove (split);
-					parentPanel.Controls.Add (oldPanel.Controls [0]);
-					dockablePanels.Remove (oldPanel);
-					dockablePanels.Remove (deadPanel);
-
-					if (parentPanel != basePanel) dockablePanels.Add (parentPanel);
-				}
-			}
-			
-			
-			SendMessage (formInfo.Form.Handle, 0xA1, 0x2, 0);
 		}
 
 		private void DockForm (Panel panel, Form form, DockDirection direction) {
@@ -299,54 +302,61 @@ namespace CSharpControls.DockManager {
 			formInfo.TabPage = tab;
 			formInfo.TabControl = tabControlPanel.TabControl;
 			formInfo.TabIndex =	formInfo.TabControl.SelectedIndex;
+
+			if (AutoSaveLayout) SaveLayout ();
 		}
 
-		public void awd () {
-			Debug.WriteLine (formInfos [2].TabPage);
-		}
-
-		private void onResizeBegin (object obj, EventArgs e) {
-			Form form = (Form) obj;
-			formSizes [form] = form.Size;
-			form.LocationChanged += onLocationChanged;
-		}
-
-		private void onResizeEnd (object obj, EventArgs e) {
-			Form form = (Form) obj;
-			form.LocationChanged -= onLocationChanged;
-
-			if (dragEnded == false) {
-				dragStarted = false;
-				dragEnded = true;
-				form.Opacity = 1;
-				DragReleasedOnManager (form);
-			}
-		}
-
-		private void onLocationChanged (object obj, EventArgs e) {
-			Form form = (Form) obj;
+		private void UndockForm (DockFormInfo formInfo) {
+			DockTabControlPanel tabControlPanel = (DockTabControlPanel) formInfo.TabControl.Parent;
+			TabControl tabControl = formInfo.TabControl;
+			tabControl.TabPages.Remove (formInfo.TabPage);
 			
-			if (formSizes [form] == form.Size) {  //this means the form was actually moved, not resized
-				if (dragStarted == false) {
-					dragStarted = true;
-					dragEnded = false;
-					form.Opacity = 0.7;
-				}
-				
-				if (CursorOverControl (this)) {
-					DragHoveredOnManager ();
+			foreach (Control c in formInfo.TabPage.Controls) {
+				formInfo.Form.Controls.Add (c);
+			}
+			
+			formInfo.Form.Location = new Point (Cursor.Position.X - 80, Cursor.Position.Y - 15);
+			formInfo.Form.Show ();
+			ReleaseCapture ();
+			formInfo.TabControl = null;
+			formInfo.TabPage = null;
+			formInfo.Docked = false;
+
+			if (tabControl.TabPages.Count <= 0) {
+				if (tabControlPanel.Parent == basePanel) {
+					tabControlPanel.PanelUndocking -= onPanelUndocking;
+					tabControlPanel.TabUndocking -= onTabUndocking;
+					tabControlPanel.Parent.Controls.Remove (tabControlPanel);
+					atLeastOneFormDocked = false;
 				} else {
-					DragLeftManager ();
+					SplitContainer split = (SplitContainer) tabControlPanel.Parent.Parent;
+					Panel parentPanel = (Panel) split.Parent;
+					Panel oldPanel = null;
+					Panel deadPanel = null;
+
+					if (tabControlPanel.Parent == split.Panel2) {
+						oldPanel = split.Panel1;
+						deadPanel = split.Panel2;
+					} else {
+						oldPanel = split.Panel2;
+						deadPanel = split.Panel1;
+					}
+				
+					tabControlPanel.PanelUndocking -= onPanelUndocking;
+					tabControlPanel.TabUndocking -= onTabUndocking;
+					tabControlPanel.Parent.Controls.Remove (tabControlPanel);
+					parentPanel.Controls.Remove (split);
+					parentPanel.Controls.Add (oldPanel.Controls [0]);
+					dockablePanels.Remove (oldPanel);
+					dockablePanels.Remove (deadPanel);
+
+					if (parentPanel != basePanel) dockablePanels.Add (parentPanel);
 				}
 			}
-		}
+			
+			if (AutoSaveLayout) SaveLayout ();
 
-		private void onPanelUndocking (object obj, EventArgs e) {
-			Debug.Write ("A");
-		}
-
-		private void onTabUndocking (object obj, DockEventArgs e) {
-			UndockForm (formInfos.Find (info => info.TabPage == e.TabPage));
+			SendMessage (formInfo.Form.Handle, 0xA1, 0x2, 0);
 		}
 
 		private DockTabControlPanel CreateTabControlPanel () {
