@@ -30,15 +30,9 @@ namespace CSharpControls.DockManager {
 		private Panel farLeftFlap = new Panel ();
 		private Panel farRightFlap = new Panel ();
 
-		private List <Form> dockableForms = new List<Form> ();
-		private Dictionary <Form, Size> formSizes = new Dictionary<Form,Size> ();
+		private List <CSSDockableForm> dockableForms = new List<CSSDockableForm> ();
 		
-		private List <DockFormInfo> formInfos = new List<DockFormInfo> ();
-
 		private List <Panel> dockablePanels = new List<Panel> ();
-
-		private bool dragStarted = false;
-		private bool dragEnded = false;
 
 		private bool atLeastOneFormDocked = false;
 
@@ -50,38 +44,34 @@ namespace CSharpControls.DockManager {
 			dockablePanels.Add (basePanel);
 		}
 
-		
-
-		public void RegisterDockableForm (string name, Form form) {
+		public void RegisterDockableForm (string name, CSSDockableForm form) {
+			form.Name = name;
+			form.DragMoved += onFormDragMoved;
+			form.DragStopped += onFormDragStopped;
+			form.Registered ();
 			dockableForms.Add (form);
-			formSizes.Add (form, new Size ());
-			form.ResizeBegin += onResizeBegin;
-			form.ResizeEnd += onResizeEnd;
-
-			DockFormInfo info = new DockFormInfo ();
-			info.Name = name;
-			info.Form = form;
-			info.Visible = form.Visible;
-			info.Docked = false;
-			formInfos.Add (info);
 		}
 
 		public void UnregisterDockableForm (string name, Form form) {
-			dockableForms.Remove (form);
-			formSizes.Remove (form);
+			//dockableForms.Remove (form);
+			//formSizes.Remove (form);
 		}
 
 		public void LoadLayout () {
-			if (File.Exists (layoutFile) == false) return;
+			if (File.Exists (layoutFile) == false) {
+				return;
+			}
 
 			XmlDocument doc = new XmlDocument ();
 			doc.Load (layoutFile);
 			XmlNode root = doc ["cssDockManager"];
 
-			if (root.ChildNodes.Count <= 0) return;
+			if (root.ChildNodes.Count <= 0) {
+				return;
+			}
 
 			XmlNode node = root.ChildNodes [0];
-
+			
 			if (node.Name == "tabControl") {
 				string [] formNames = node.Attributes ["forms"].InnerText.Split (',');
 				
@@ -117,42 +107,20 @@ namespace CSharpControls.DockManager {
 		}
 
 		public void awd () {
-			Debug.WriteLine (formInfos [2].TabPage);
+			//Debug.WriteLine (formInfos [2].TabPage);
 		}
 
-		private void onResizeBegin (object obj, EventArgs e) {
-			Form form = (Form) obj;
-			formSizes [form] = form.Size;
-			form.LocationChanged += onLocationChanged;
-		}
-
-		private void onResizeEnd (object obj, EventArgs e) {
-			Form form = (Form) obj;
-			form.LocationChanged -= onLocationChanged;
-
-			if (dragEnded == false) {
-				dragStarted = false;
-				dragEnded = true;
-				form.Opacity = 1;
-				DragReleasedOnManager (form);
+		private void onFormDragMoved (object obj, EventArgs e) {
+			if (CursorOverControl (this)) {
+				DragHoveredOnManager ();
+			} else {
+				DragLeftManager ();
 			}
 		}
 
-		private void onLocationChanged (object obj, EventArgs e) {
-			Form form = (Form) obj;
-			
-			if (formSizes [form] == form.Size) {  //this means the form was actually moved, not resized
-				if (dragStarted == false) {
-					dragStarted = true;
-					dragEnded = false;
-					form.Opacity = 0.7;
-				}
-				
-				if (CursorOverControl (this)) {
-					DragHoveredOnManager ();
-				} else {
-					DragLeftManager ();
-				}
+		private void onFormDragStopped (object obj, EventArgs e) {
+			if (CursorOverControl (this)) {
+				DragReleasedOnManager ((CSSDockableForm) obj);
 			}
 		}
 
@@ -161,14 +129,14 @@ namespace CSharpControls.DockManager {
 		}
 
 		private void onTabUndocking (object obj, DockEventArgs e) {
-			UndockForm (formInfos.Find (info => info.TabPage == e.TabPage));
+			UndockForm (dockableForms.Find (form => form.TabPage == e.TabPage));
 		}
 
 		private Panel LoadLayout (Panel panel, DockDirection direction, XmlNode node) {
 			Panel returnPanel = null;
 			XmlNode node1 = node.ChildNodes [0];
 			XmlNode node2 = node.ChildNodes [1];
-
+			
 			if (node1.Name == "tabControl") {
 				string [] formNames = node1.Attributes ["forms"].InnerText.Split (',');
 				DockForm (panel, GetForm (formNames [0]), direction);
@@ -178,7 +146,7 @@ namespace CSharpControls.DockManager {
 					DockForm (returnPanel, GetForm (formNames [i]), DockDirection.Center);
 				}
 			} else {
-				returnPanel = LoadLayout (panel, DockDirection.Center, node1);
+				returnPanel = LoadLayout (panel, direction, node1);
 			}
 
 			direction = (node.Attributes ["orientation"].InnerText == "Vertical") ? DockDirection.Right : DockDirection.Bottom;
@@ -203,8 +171,10 @@ namespace CSharpControls.DockManager {
 			string formNames = "";
 
 			foreach (TabPage tab in tabControl.TabPages) {
-				formInfos.ForEach (info => {
-					if (info.TabPage == tab) formNames += "," + info.Name;
+				dockableForms.ForEach (form => {
+					if (form.TabPage == tab) {
+						formNames += "," + form.Name;
+					}
 				});
 			}
 
@@ -228,18 +198,13 @@ namespace CSharpControls.DockManager {
 			w.WriteEndElement ();
 		}
 
-		private void DockForm (Panel panel, Form form, DockDirection direction) {
-			//if (atLeastOneFormDocked == false) throw new Exception ("dock initial form first");
-			if (formInfos.Find (info => info.Form == form) == null) throw new Exception ("not a dockable form");
-			if (dockablePanels.Contains (panel) == false) throw new Exception ("not a valid panel");
-			
+		private void DockForm (Panel panel, CSSDockableForm form, DockDirection direction) {			
 			if (atLeastOneFormDocked == false) {
 				atLeastOneFormDocked = true;
 				basePanel.Controls.Add (CreateTabControlPanel ());
 				direction = DockDirection.Center;
 			}
 
-			DockFormInfo formInfo = GetFormInfo (form);
 			DockTabControlPanel tabControlPanel = null;
 			TabPage tab = null;
 
@@ -297,31 +262,33 @@ namespace CSharpControls.DockManager {
 			tabControlPanel.TabControl.TabPages.Add (tab);
 			tabControlPanel.TabControl.SelectedTab = tab;
 			
-			formInfo.Docked = true;
 			form.Hide ();
-			formInfo.TabPage = tab;
-			formInfo.TabControl = tabControlPanel.TabControl;
-			formInfo.TabIndex =	formInfo.TabControl.SelectedIndex;
+			form.Docked = true;
+			form.TabPage = tab;
+			form.TabControl = tabControlPanel.TabControl;
+			form.TabIndex = form.TabControl.SelectedIndex;
 
-			if (AutoSaveLayout) SaveLayout ();
+			if (AutoSaveLayout) {
+				SaveLayout ();
+			}
 		}
 
-		private void UndockForm (DockFormInfo formInfo) {
-			DockTabControlPanel tabControlPanel = (DockTabControlPanel) formInfo.TabControl.Parent;
-			TabControl tabControl = formInfo.TabControl;
-			tabControl.TabPages.Remove (formInfo.TabPage);
+		private void UndockForm (CSSDockableForm form) {
+			DockTabControlPanel tabControlPanel = (DockTabControlPanel) form.TabControl.Parent;
+			TabControl tabControl = form.TabControl;
+			tabControl.TabPages.Remove (form.TabPage);
 			
-			foreach (Control c in formInfo.TabPage.Controls) {
-				formInfo.Form.Controls.Add (c);
+			foreach (Control c in form.TabPage.Controls) {
+				form.Controls.Add (c);
 			}
 			
-			formInfo.Form.Location = new Point (Cursor.Position.X - 80, Cursor.Position.Y - 15);
-			formInfo.Form.Show ();
+			form.Location = new Point (Cursor.Position.X - 80, Cursor.Position.Y - 15);
+			form.Docked = false;
+			form.Show ();
 			ReleaseCapture ();
-			formInfo.TabControl = null;
-			formInfo.TabPage = null;
-			formInfo.Docked = false;
-
+			form.TabControl = null;
+			form.TabPage = null;
+			
 			if (tabControl.TabPages.Count <= 0) {
 				if (tabControlPanel.Parent == basePanel) {
 					tabControlPanel.PanelUndocking -= onPanelUndocking;
@@ -356,7 +323,7 @@ namespace CSharpControls.DockManager {
 			
 			if (AutoSaveLayout) SaveLayout ();
 
-			SendMessage (formInfo.Form.Handle, 0xA1, 0x2, 0);
+			SendMessage (form.Handle, 0xA1, 0x2, 0);
 		}
 
 		private DockTabControlPanel CreateTabControlPanel () {
@@ -399,7 +366,7 @@ namespace CSharpControls.DockManager {
 			this.BackColor = SystemColors.Control;
 		}
 
-		private void DragReleasedOnManager (Form form) {
+		private void DragReleasedOnManager (CSSDockableForm form) {
 			if (atLeastOneFormDocked) {
 				HideFarFlaps ();
 				HidePanelFlaps ();
@@ -500,27 +467,27 @@ namespace CSharpControls.DockManager {
 
 		//name is the name of form that the panel should contain
 		private Panel GetDockablePanel (string name) {
-			DockFormInfo formInfo = formInfos.Find (info => info.Name == name);
+			CSSDockableForm form = dockableForms.Find (f => f.Name == name);
 
-			if (basePanel.Controls [0] == formInfo.TabControl.Parent) return basePanel;
+			if (basePanel.Controls [0] == form.TabControl.Parent) {
+				return basePanel;
+			}
 
 			for (int i = 1; i < dockablePanels.Count; i++) {
 				Panel panel = dockablePanels [i];
 				
 				DockTabControlPanel tabControlPanel = (DockTabControlPanel) panel.Controls [0];
 
-				if (tabControlPanel == formInfo.TabControl.Parent) return panel;
+				if (tabControlPanel == form.TabControl.Parent) {
+					return panel;
+				}
 			}
 
 			return null;
 		}
 
-		private DockFormInfo GetFormInfo (Form form) {
-			return formInfos.Find (info => info.Form == form);
-		}
-
-		private Form GetForm (string name) {
-			return formInfos.Find (info => info.Name == name).Form;
+		private CSSDockableForm GetForm (string name) {
+			return dockableForms.Find (form => form.Name == name);
 		}
 
 		private bool CursorOverControl (Control control) {
