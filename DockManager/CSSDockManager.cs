@@ -48,6 +48,8 @@ namespace CSharpControls.DockManager {
 			form.Name = name;
 			form.DragMoved += onFormDragMoved;
 			form.DragStopped += onFormDragStopped;
+			form.TabShown += onFormTabShown;
+			form.TabHidden += onFormTabHidden;
 			form.Registered ();
 			dockableForms.Add (form);
 		}
@@ -121,6 +123,42 @@ namespace CSharpControls.DockManager {
 		private void onFormDragStopped (object obj, EventArgs e) {
 			if (CursorOverControl (this)) {
 				DragReleasedOnManager ((CSSDockableForm) obj);
+			}
+		}
+
+		private void onFormTabShown (object obj, EventArgs e) {
+			CSSDockableForm form = (CSSDockableForm) obj;
+			Panel panel = (Panel) form.TabControlPanel.Parent;
+
+			if (panel == basePanel) {
+
+			} else {
+				SplitContainer split = (SplitContainer) panel.Parent;
+
+				if (panel == split.Panel1) {
+					split.Panel1Collapsed = false;
+				} else {
+					split.Panel2Collapsed = false;
+				}
+			}
+		}
+
+		private void onFormTabHidden (object obj, EventArgs e) {
+			CSSDockableForm form = (CSSDockableForm) obj;
+			Panel panel = (Panel) form.TabControlPanel.Parent;
+			
+			if (dockableForms.Exists (f => f.TabControlPanel == form.TabControlPanel && f.TabVisible) == false) {
+				if (panel == basePanel) {
+
+				} else {
+					SplitContainer split = (SplitContainer) panel.Parent;
+
+					if (panel == split.Panel1) {
+						split.Panel1Collapsed = true;
+					} else {
+						split.Panel2Collapsed = true;
+					}
+				}
 			}
 		}
 
@@ -264,8 +302,9 @@ namespace CSharpControls.DockManager {
 			
 			form.Hide ();
 			form.Docked = true;
-			form.TabPage = tab;
+			form.TabControlPanel = tabControlPanel;
 			form.TabControl = tabControlPanel.TabControl;
+			form.TabPage = tab;
 			form.TabIndex = form.TabControl.SelectedIndex;
 
 			if (AutoSaveLayout) {
@@ -286,6 +325,7 @@ namespace CSharpControls.DockManager {
 			form.Docked = false;
 			form.Show ();
 			ReleaseCapture ();
+			form.TabControlPanel = null;
 			form.TabControl = null;
 			form.TabPage = null;
 			
@@ -321,7 +361,9 @@ namespace CSharpControls.DockManager {
 				}
 			}
 			
-			if (AutoSaveLayout) SaveLayout ();
+			if (AutoSaveLayout) {
+				SaveLayout ();
+			}
 
 			SendMessage (form.Handle, 0xA1, 0x2, 0);
 		}

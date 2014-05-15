@@ -9,35 +9,54 @@ using System.Windows.Forms;
 
 namespace CSharpControls.DockManager {
 	public class CSSDockableForm:Form {
-		/// <summary>
-		/// Registered name in the DockManager.
-		/// </summary>
 		internal new string Name = String.Empty;
-
-		/// <summary>
-		/// Whether or not the Form is currently docked.
-		/// </summary>
 		internal bool Docked = false;
-
-		/// <summary>
-		/// The TabPage this Form belongs to if docked.
-		/// </summary>
-		internal TabPage TabPage = null;
-
-		/// <summary>
-		/// 
-		/// </summary>
+		internal Panel Panel = null;
+		internal DockTabControlPanel TabControlPanel = null;
 		internal TabControl TabControl = null;
-
-		/// <summary>
-		/// The TabIndex this Form has in its TabControl if docked.
-		/// </summary>
+		internal TabPage TabPage = null;
 		internal new int TabIndex = -1;
-		
+		internal bool TabVisible = true;
+
 		internal event EventHandler DragMoved;
 		internal event EventHandler DragStopped;
+		internal event EventHandler TabShown;
+		internal event EventHandler TabHidden;
 
 		private Size oldSize;
+		
+
+		public new bool Visible {
+			get {
+				if (Docked) {
+					return TabVisible;
+				} else {
+					return base.Visible;
+				}
+			}
+			set {
+				if (Docked) {
+					if (TabVisible == false && value) {
+						TabVisible = true;
+						TabControl.TabPages.Insert (TabIndex, TabPage);
+						TabControl.SelectedTab = TabPage;
+
+						if (TabShown != null) {
+							TabShown (this, EventArgs.Empty);
+						}
+					} else if (TabVisible && value == false) {
+						TabVisible = false;
+						TabControl.TabPages.Remove (TabPage);
+
+						if (TabHidden != null) {
+							TabHidden (this, EventArgs.Empty);
+						}
+					}
+				} else {
+					base.Visible = value;
+				}
+			}
+		}
 
 		public void Registered () {
 			this.ResizeBegin += onResizeBegin;
