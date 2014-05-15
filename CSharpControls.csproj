@@ -44,6 +44,9 @@
     <Compile Include="CSSTabControl.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="DockManager\CSSDockableForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="DockManager\CSSDockManager.cs">
       <SubType>Component</SubType>
     </Compile>
