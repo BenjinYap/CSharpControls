@@ -41,6 +41,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CSSHelper.cs" />
     <Compile Include="CSSTabControl.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -50,9 +51,7 @@
     <Compile Include="DockManager\CSSDockManager.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="DockManager\DockSplitContainer.cs">
-      <SubType>Component</SubType>
-    </Compile>
+    <Compile Include="DockManager\DockFlapManager.cs" />
     <Compile Include="DockManager\DockTabControlPanel.cs">
       <SubType>Component</SubType>
     </Compile>

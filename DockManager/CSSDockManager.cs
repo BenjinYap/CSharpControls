@@ -17,6 +17,8 @@ namespace CSharpControls.DockManager {
 
 		private Panel basePanel = new Panel ();
 
+		private DockFlapManager flapManager;
+
 		private Color flapColor = Color.FromArgb (128, Color.Red);
 		private TableLayoutPanel flapTable = new TableLayoutPanel ();
 		private List <Panel> flaps;
@@ -42,6 +44,8 @@ namespace CSharpControls.DockManager {
 			basePanel.Dock = DockStyle.Fill;
 			this.Controls.Add (basePanel);
 			dockablePanels.Add (basePanel);
+
+			flapManager = new DockFlapManager (this);
 		}
 
 		public void RegisterDockableForm (string name, CSSDockableForm form) {
@@ -52,6 +56,8 @@ namespace CSharpControls.DockManager {
 			form.TabHidden += onFormTabHidden;
 			form.Registered ();
 			dockableForms.Add (form);
+
+			flapManager.RegisterDockableForm (form);
 		}
 
 		public void UnregisterDockableForm (string name, Form form) {
