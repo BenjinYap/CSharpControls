@@ -52,6 +52,7 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="DockManager\DockFlapManager.cs" />
+    <Compile Include="DockManager\DockLayoutManager.cs" />
     <Compile Include="DockManager\DockTabControlPanel.cs">
       <SubType>Component</SubType>
     </Compile>
