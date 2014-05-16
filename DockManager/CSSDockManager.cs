@@ -285,14 +285,6 @@ namespace CSharpControls.DockManager {
 			return null;
 		}
 		
-		private Panel GetDockablePanel (Point cursor) {
-			foreach (Panel panel in DockablePanels) {
-				if (panel.ClientRectangle.Contains (panel.PointToClient (cursor))) return panel;
-			}
-
-			return null;
-		}
-
 		[DllImportAttribute ("user32.dll")]
 		public static extern int SendMessage (IntPtr hWnd, int Msg, int wParam, int lParam);
 		[DllImportAttribute("user32.dll")]
