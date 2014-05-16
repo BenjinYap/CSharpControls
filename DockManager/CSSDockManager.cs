@@ -32,7 +32,6 @@ namespace CSharpControls.DockManager {
 
 		public void RegisterDockableForm (string name, CSSDockableForm form) {
 			form.Name = name;
-			form.DragMoved += onFormDragMoved;
 			form.DragStopped += onFormDragStopped;
 			form.TabShown += onFormTabShown;
 			form.TabHidden += onFormTabHidden;
@@ -94,18 +93,6 @@ namespace CSharpControls.DockManager {
 			}
 			
 			return "";
-		}
-
-		public void awd () {
-			//Debug.WriteLine (formInfos [2].TabPage);
-		}
-
-		private void onFormDragMoved (object obj, EventArgs e) {
-			if (this.CursorOverControl ()) {
-				DragHoveredOnManager ();
-			} else {
-				DragLeftManager ();
-			}
 		}
 
 		private void onFormDragStopped (object obj, EventArgs e) {
@@ -361,39 +348,6 @@ namespace CSharpControls.DockManager {
 			panel.PanelUndocking += onPanelUndocking;
 			panel.TabUndocking += onTabUndocking;
 			return panel;
-		}
-
-		private void DragHoveredOnManager () {
-			/*if (atLeastOneFormDocked) {
-				ShowFarFlaps ();
-				Panel panel = GetHoveredPanel ();
-				
-				if (panel == null) {
-					HidePanelFlaps ();
-				} else {
-					ShowPanelFlaps (panel);
-				}
-
-				flaps.ForEach (flap => {  //make flaps that are hovered over fully opaque
-					if (CursorOverControl (flap)) {
-						flap.BackColor = Color.FromArgb (255, flapColor);
-					} else {
-						flap.BackColor = flapColor;
-					}
-				});
-			} else {
-				if (CursorOverControl (this)) {
-					this.BackColor = flapColor;
-				} else {
-					this.BackColor = SystemColors.Control;
-				}
-			}*/
-		}
-
-		private void DragLeftManager () {
-			//HidePanelFlaps ();
-			//HideFarFlaps ();
-			//this.BackColor = SystemColors.Control;
 		}
 
 		private void DragReleasedOnManager (CSSDockableForm form) {
