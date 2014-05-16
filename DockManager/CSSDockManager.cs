@@ -15,37 +15,19 @@ namespace CSharpControls.DockManager {
 	public class CSSDockManager:Panel {
 		public bool AutoSaveLayout = true;
 
+		internal bool AtLeastOneFormDocked = false;
+		internal List <Panel> DockablePanels = new List<Panel> ();
+
 		private Panel basePanel = new Panel ();
-
 		private DockFlapManager flapManager;
-
-		private Color flapColor = Color.FromArgb (128, Color.Red);
-		private TableLayoutPanel flapTable = new TableLayoutPanel ();
-		private List <Panel> flaps;
-		private Panel topFlap = new Panel ();
-		private Panel bottomFlap = new Panel ();
-		private Panel leftFlap = new Panel ();
-		private Panel rightFlap = new Panel ();
-		private Panel centerFlap = new Panel ();
-		private Panel farTopFlap = new Panel ();
-		private Panel farBottomFlap = new Panel ();
-		private Panel farLeftFlap = new Panel ();
-		private Panel farRightFlap = new Panel ();
-
 		private List <CSSDockableForm> dockableForms = new List<CSSDockableForm> ();
 		
-		private List <Panel> dockablePanels = new List<Panel> ();
-
-		private bool atLeastOneFormDocked = false;
-
 		public CSSDockManager () {
-			PrepareFlaps ();
-			
+			flapManager = new DockFlapManager (this);
+
 			basePanel.Dock = DockStyle.Fill;
 			this.Controls.Add (basePanel);
-			dockablePanels.Add (basePanel);
-
-			flapManager = new DockFlapManager (this);
+			DockablePanels.Add (basePanel);
 		}
 
 		public void RegisterDockableForm (string name, CSSDockableForm form) {
@@ -100,7 +82,7 @@ namespace CSharpControls.DockManager {
 			using (XmlWriter w = XmlWriter.Create (layoutFile, settings)) {
 				w.WriteStartElement ("cssDockManager");
 
-				if (atLeastOneFormDocked) {
+				if (AtLeastOneFormDocked) {
 					if (basePanel.Controls [0] is DockTabControlPanel) {
 						SaveTabControlPanel (w, (DockTabControlPanel) basePanel.Controls [0]);
 					} else {
@@ -119,7 +101,7 @@ namespace CSharpControls.DockManager {
 		}
 
 		private void onFormDragMoved (object obj, EventArgs e) {
-			if (CursorOverControl (this)) {
+			if (this.CursorOverControl ()) {
 				DragHoveredOnManager ();
 			} else {
 				DragLeftManager ();
@@ -127,7 +109,7 @@ namespace CSharpControls.DockManager {
 		}
 
 		private void onFormDragStopped (object obj, EventArgs e) {
-			if (CursorOverControl (this)) {
+			if (this.CursorOverControl ()) {
 				DragReleasedOnManager ((CSSDockableForm) obj);
 			}
 		}
@@ -243,8 +225,8 @@ namespace CSharpControls.DockManager {
 		}
 
 		private void DockForm (Panel panel, CSSDockableForm form, DockDirection direction) {			
-			if (atLeastOneFormDocked == false) {
-				atLeastOneFormDocked = true;
+			if (AtLeastOneFormDocked == false) {
+				AtLeastOneFormDocked = true;
 				basePanel.Controls.Add (CreateTabControlPanel ());
 				direction = DockDirection.Center;
 			}
@@ -285,13 +267,13 @@ namespace CSharpControls.DockManager {
 				newPanel.Controls.Add (tabControlPanel);  //add the new form's controls to the "new" panel of the new split
 				
 				if (oldPanel.Controls [0] is DockTabControlPanel) {  //add the "old" panel to the dockable panels only if it has a tab control panel
-					dockablePanels.Add (oldPanel);
+					DockablePanels.Add (oldPanel);
 				}
 
-				dockablePanels.Add (newPanel);  //add the "new" panel to the dockable panels
+				DockablePanels.Add (newPanel);  //add the "new" panel to the dockable panels
 
-				if (panel != dockablePanels [0]) {  //if the target panel is not the first panel
-					dockablePanels.Remove (panel);  //remove the target panel from the dockable panels since it now contains a split
+				if (panel != DockablePanels [0]) {  //if the target panel is not the first panel
+					DockablePanels.Remove (panel);  //remove the target panel from the dockable panels since it now contains a split
 				}
 
 				panel.Controls.Add (split);  //the target panel now contains the split instead of its original tab control panel
@@ -340,7 +322,7 @@ namespace CSharpControls.DockManager {
 					tabControlPanel.PanelUndocking -= onPanelUndocking;
 					tabControlPanel.TabUndocking -= onTabUndocking;
 					tabControlPanel.Parent.Controls.Remove (tabControlPanel);
-					atLeastOneFormDocked = false;
+					AtLeastOneFormDocked = false;
 				} else {
 					SplitContainer split = (SplitContainer) tabControlPanel.Parent.Parent;
 					Panel parentPanel = (Panel) split.Parent;
@@ -360,10 +342,10 @@ namespace CSharpControls.DockManager {
 					tabControlPanel.Parent.Controls.Remove (tabControlPanel);
 					parentPanel.Controls.Remove (split);
 					parentPanel.Controls.Add (oldPanel.Controls [0]);
-					dockablePanels.Remove (oldPanel);
-					dockablePanels.Remove (deadPanel);
+					DockablePanels.Remove (oldPanel);
+					DockablePanels.Remove (deadPanel);
 
-					if (parentPanel != basePanel) dockablePanels.Add (parentPanel);
+					if (parentPanel != basePanel) DockablePanels.Add (parentPanel);
 				}
 			}
 			
@@ -382,7 +364,7 @@ namespace CSharpControls.DockManager {
 		}
 
 		private void DragHoveredOnManager () {
-			if (atLeastOneFormDocked) {
+			/*if (atLeastOneFormDocked) {
 				ShowFarFlaps ();
 				Panel panel = GetHoveredPanel ();
 				
@@ -405,108 +387,57 @@ namespace CSharpControls.DockManager {
 				} else {
 					this.BackColor = SystemColors.Control;
 				}
-			}
+			}*/
 		}
 
 		private void DragLeftManager () {
-			HidePanelFlaps ();
-			HideFarFlaps ();
-			this.BackColor = SystemColors.Control;
+			//HidePanelFlaps ();
+			//HideFarFlaps ();
+			//this.BackColor = SystemColors.Control;
 		}
 
 		private void DragReleasedOnManager (CSSDockableForm form) {
-			if (atLeastOneFormDocked) {
-				HideFarFlaps ();
-				HidePanelFlaps ();
-
-				int index = flaps.FindIndex (f => CursorOverControl (f));
+			if (AtLeastOneFormDocked) {
+				DockDirection dir = flapManager.GetDockDirection ();
 				
-				if (index >= 5 && index <= 8) {  //released over far flaps
-					DockForm (basePanel, form, (DockDirection) (index - 5));
-				} else if (index > -1) {  //released over panel flaps
-					DockForm (GetHoveredPanel (), form, (DockDirection) index);
+				if (dir != DockDirection.None) {
+					DockForm (GetHoveredPanel (), form, dir);
+					return;
 				}
+
+				dir = flapManager.GetFarDockDirection ();
+				
+				if (dir != DockDirection.None) {
+					DockForm (basePanel, form, dir);
+				}
+
 			} else {
-				if (CursorOverControl (this)) {
+				DockDirection dir = flapManager.GetFarDockDirection ();
+				
+				if (dir != DockDirection.None) {
 					DockForm (basePanel, form, DockDirection.Center);
 				}
-					
-				this.BackColor = SystemColors.Control;
 			}
 		}
 		
-		private void PrepareFlaps () {
-			flaps = new List<Panel> {topFlap, bottomFlap, leftFlap, rightFlap, centerFlap, farTopFlap, farBottomFlap, farLeftFlap, farRightFlap};
-
-			flaps.ForEach (flap => {
-				flap.Size = new Size (flapSize, flapSize);
-				flap.BackColor = flapColor;
-				this.Controls.Add (flap);
-			});
-
-			HideFarFlaps ();
-			HidePanelFlaps ();
-		}
-
-		private void ShowFarFlaps () {
-			Point [] flapPos = {  //flap positions are at the edges of the dock manager
-				new Point ((this.Width - flapSize) / 2, 0),
-				new Point ((this.Width - flapSize) / 2, this.Height - flapSize),
-				new Point (0, (this.Height - flapSize) / 2),
-				new Point (this.Width - flapSize, (this.Height - flapSize) / 2),
-			};
-
-			for (int i = 5; i < 9; i++) {
-				flaps [i].Location = flapPos [i - 5];
-				flaps [i].Show ();
-			}
-		}
-
-		private void ShowPanelFlaps (Panel panel) {
-			Point panelPos = this.PointToClient (panel.PointToScreen (new Point (0)));
-			
-			Point [] flapPos = {  //flap positions are a cross shape in the center of the target panel
-				new Point (panelPos.X + (panel.Width - flapSize) / 2, panelPos.Y + (panel.Height - flapSize) / 2 - flapSize - 5),
-				new Point (panelPos.X + (panel.Width - flapSize) / 2, panelPos.Y + (panel.Height - flapSize) / 2 + flapSize + 5),
-				new Point (panelPos.X + (panel.Width - flapSize) / 2 - flapSize - 5, panelPos.Y + (panel.Height - flapSize) / 2),
-				new Point (panelPos.X + (panel.Width - flapSize) / 2 + flapSize + 5, panelPos.Y + (panel.Height - flapSize) / 2),
-				new Point (panelPos.X + (panel.Width - flapSize) / 2, panelPos.Y + (panel.Height - flapSize) / 2),
-			};
-
-			for (int i = 0; i < 5; i++) {
-				flaps [i].Location = flapPos [i];
-				flaps [i].Show ();
-			}
-		}
-
-		private void HidePanelFlaps () {
-			for (int i = 0; i < 5; i++) {
-				flaps [i].Hide ();
-				flaps [i].BackColor = flapColor;
-			}
-		}
-
-		private void HideFarFlaps () {
-			for (int i = 5; i < 9; i++) {
-				flaps [i].Hide ();
-				flaps [i].BackColor = flapColor;
-			}
-		}
-
 		private Panel GetHoveredPanel () {
 			//if the first panel is the only dockable panel, check it for hover
-			if (dockablePanels.Count == 1 && CursorOverControl (basePanel)) return basePanel;
+			if (DockablePanels.Count == 1 && basePanel.CursorOverControl ()) {
+				return basePanel;
+			}
 			
 			//otherwise check every dockable panel except the first one
-			for (int i = 1; i < dockablePanels.Count; i++) {
-				if (CursorOverControl (dockablePanels [i])) return dockablePanels [i];
+			for (int i = 1; i < DockablePanels.Count; i++) {
+				if (DockablePanels [i].CursorOverControl ()) {
+					return DockablePanels [i];
+				}
 			}
 			
 			return null;
 		}
-
+		
 		private Panel GetDockablePanel (Point cursor) {
-			foreach (Panel panel in dockablePanels) {
+			foreach (Panel panel in DockablePanels) {
 				if (panel.ClientRectangle.Contains (panel.PointToClient (cursor))) return panel;
 			}
 
@@ -521,8 +452,8 @@ namespace CSharpControls.DockManager {
 				return basePanel;
 			}
 
-			for (int i = 1; i < dockablePanels.Count; i++) {
-				Panel panel = dockablePanels [i];
+			for (int i = 1; i < DockablePanels.Count; i++) {
+				Panel panel = DockablePanels [i];
 				
 				DockTabControlPanel tabControlPanel = (DockTabControlPanel) panel.Controls [0];
 
@@ -538,18 +469,14 @@ namespace CSharpControls.DockManager {
 			return dockableForms.Find (form => form.Name == name);
 		}
 
-		private bool CursorOverControl (Control control) {
-			return control.ClientRectangle.Contains (control.PointToClient (Cursor.Position));
-		}
-
 		[DllImportAttribute ("user32.dll")]
 		public static extern int SendMessage (IntPtr hWnd, int Msg, int wParam, int lParam);
 		[DllImportAttribute("user32.dll")]
 		public static extern bool ReleaseCapture ();
 
-		private const int flapSize = 40;
+		
 		private const string layoutFile = "cssDockManagerLayout.xml";
-
-		public enum DockDirection {Top = 0, Bottom, Left, Right, Center, FarTop, FarBottom, FarLeft, FarRight}
 	}
+
+	public enum DockDirection {Top = 0, Bottom, Left, Right, Center, None}
 }
