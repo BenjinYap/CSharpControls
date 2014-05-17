@@ -38,7 +38,13 @@ namespace CSharpControls.DockManager {
 				if (Docked) {
 					if (TabVisible == false && value) {
 						TabVisible = true;
-						TabControl.TabPages.Insert (TabIndex, TabPage);
+
+						if (TabIndex > TabControl.TabPages.Count) {
+							TabControl.TabPages.Insert (TabControl.TabPages.Count, TabPage);
+						} else {
+							TabControl.TabPages.Insert (TabIndex, TabPage);
+						}
+						
 						TabControl.SelectedTab = TabPage;
 
 						if (TabShown != null) {

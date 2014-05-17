@@ -28,6 +28,7 @@ namespace CSharpControls.DockManager {
 			layoutManager = new DockLayoutManager (this);
 
 			basePanel.Dock = DockStyle.Fill;
+			basePanel.Hide ();
 			this.Controls.Add (basePanel);
 			DockablePanels.Add (basePanel);
 		}
@@ -59,6 +60,7 @@ namespace CSharpControls.DockManager {
 		internal void DockForm (Panel panel, CSSDockableForm form, DockDirection direction) {			
 			if (AtLeastOneFormDocked == false) {
 				AtLeastOneFormDocked = true;
+				basePanel.Show ();
 				basePanel.Controls.Add (CreateTabControlPanel ());
 				direction = DockDirection.Center;
 			}
@@ -122,6 +124,7 @@ namespace CSharpControls.DockManager {
 			
 			form.Hide ();
 			form.Docked = true;
+			form.TabVisible = true;
 			form.TabControlPanel = tabControlPanel;
 			form.TabControl = tabControlPanel.TabControl;
 			form.TabPage = tab;
@@ -139,43 +142,102 @@ namespace CSharpControls.DockManager {
 		}
 
 		private void onFormTabShown (object obj, EventArgs e) {
-			CSSDockableForm form = (CSSDockableForm) obj;
-			Panel panel = (Panel) form.TabControlPanel.Parent;
+			ShowVisiblePanels ();
+		}
 
-			if (panel == basePanel) {
+		private void ShowVisiblePanels () {
+			if (DockablePanels.Count > 1) {
+				CheckVisiblePanels ((SplitContainer) basePanel.Controls [0]);
+			}
 
+			basePanel.Show ();
+		}
+
+		private bool CheckVisiblePanels (SplitContainer split) {
+			bool leftVisible;
+			bool rightVisible;
+			
+			if (split.Panel1.Controls [0] is DockTabControlPanel) {
+				leftVisible = AllTabsHidden ((DockTabControlPanel) split.Panel1.Controls [0]) == false;
 			} else {
-				SplitContainer split = (SplitContainer) panel.Parent;
+				leftVisible = CheckVisiblePanels ((SplitContainer) split.Panel1.Controls [0]);
+			}
 
-				if (panel == split.Panel1) {
+			if (split.Panel2.Controls [0] is DockTabControlPanel) {
+				rightVisible = AllTabsHidden ((DockTabControlPanel) split.Panel2.Controls [0]) == false;
+			} else {
+				rightVisible = CheckVisiblePanels ((SplitContainer) split.Panel2.Controls [0]);
+			}
+			
+			if (leftVisible || rightVisible) {
+				if (leftVisible && rightVisible) {
 					split.Panel1Collapsed = false;
-				} else {
 					split.Panel2Collapsed = false;
+				} else if (leftVisible) {
+					split.Panel2Collapsed = true;
+				} else {
+					split.Panel1Collapsed = true;
 				}
+
+				return true;
+			} else {
+				return false;
 			}
 		}
 
 		private void onFormTabHidden (object obj, EventArgs e) {
-			CSSDockableForm form = (CSSDockableForm) obj;
-			Panel panel = (Panel) form.TabControlPanel.Parent;
-			
-			if (DockableForms.Exists (f => f.TabControlPanel == form.TabControlPanel && f.TabVisible) == false) {
-				if (panel == basePanel) {
+			CollapseEmptyPanels ();
+		}
 
-				} else {
-					SplitContainer split = (SplitContainer) panel.Parent;
+		private void CollapseEmptyPanels () {
+			if (DockablePanels.Count == 1) {
+				if (AllTabsHidden ((DockTabControlPanel) basePanel.Controls [0])) {
+					basePanel.Hide ();
+				}
+			} else {
+				bool allHidden = CheckSplitCollapse ((SplitContainer) basePanel.Controls [0]);
 
-					if (panel == split.Panel1) {
-						split.Panel1Collapsed = true;
-					} else {
-						split.Panel2Collapsed = true;
-					}
+				if (allHidden) {
+					basePanel.Hide ();
 				}
 			}
 		}
 
+		private bool CheckSplitCollapse (SplitContainer split) {
+			bool leftHidden;
+			bool rightHidden;
+
+			if (split.Panel1.Controls [0] is DockTabControlPanel) {
+				leftHidden = AllTabsHidden ((DockTabControlPanel) split.Panel1.Controls [0]);
+			} else {
+				leftHidden = CheckSplitCollapse ((SplitContainer) split.Panel1.Controls [0]);
+			}
+
+			if (split.Panel2.Controls [0] is DockTabControlPanel) {
+				rightHidden = AllTabsHidden ((DockTabControlPanel) split.Panel2.Controls [0]);
+			} else {
+				rightHidden = CheckSplitCollapse ((SplitContainer) split.Panel2.Controls [0]);
+			}
+			
+			if (leftHidden && rightHidden) {
+				return true;
+			} else {
+				if (leftHidden) {
+					split.Panel1Collapsed = true;
+				} else if (rightHidden) {
+					split.Panel2Collapsed = true;
+				}
+
+				return false;
+			}
+		}
+
+		private bool AllTabsHidden (DockTabControlPanel panel) {
+			return DockableForms.Exists (form => form.TabVisible && form.TabControlPanel == panel) == false;
+		}
+
 		private void onPanelUndocking (object obj, EventArgs e) {
-			Debug.Write ("A");
+			Debug.WriteLine ("A");
 		}
 
 		private void onTabUndocking (object obj, DockEventArgs e) {
@@ -195,6 +257,7 @@ namespace CSharpControls.DockManager {
 			form.Docked = false;
 			form.Show ();
 			ReleaseCapture ();
+			form.TabVisible = false;
 			form.TabControlPanel = null;
 			form.TabControl = null;
 			form.TabPage = null;
