@@ -147,42 +147,10 @@ namespace CSharpControls.DockManager {
 
 		private void ShowVisiblePanels () {
 			if (DockablePanels.Count > 1) {
-				CheckVisiblePanels ((SplitContainer) basePanel.Controls [0]);
+				SetPanelVisibility ((SplitContainer) basePanel.Controls [0], false);
 			}
 
 			basePanel.Show ();
-		}
-
-		private bool CheckVisiblePanels (SplitContainer split) {
-			bool leftVisible;
-			bool rightVisible;
-			
-			if (split.Panel1.Controls [0] is DockTabControlPanel) {
-				leftVisible = AllTabsHidden ((DockTabControlPanel) split.Panel1.Controls [0]) == false;
-			} else {
-				leftVisible = CheckVisiblePanels ((SplitContainer) split.Panel1.Controls [0]);
-			}
-
-			if (split.Panel2.Controls [0] is DockTabControlPanel) {
-				rightVisible = AllTabsHidden ((DockTabControlPanel) split.Panel2.Controls [0]) == false;
-			} else {
-				rightVisible = CheckVisiblePanels ((SplitContainer) split.Panel2.Controls [0]);
-			}
-			
-			if (leftVisible || rightVisible) {
-				if (leftVisible && rightVisible) {
-					split.Panel1Collapsed = false;
-					split.Panel2Collapsed = false;
-				} else if (leftVisible) {
-					split.Panel2Collapsed = true;
-				} else {
-					split.Panel1Collapsed = true;
-				}
-
-				return true;
-			} else {
-				return false;
-			}
 		}
 
 		private void onFormTabHidden (object obj, EventArgs e) {
@@ -195,7 +163,7 @@ namespace CSharpControls.DockManager {
 					basePanel.Hide ();
 				}
 			} else {
-				bool allHidden = CheckSplitCollapse ((SplitContainer) basePanel.Controls [0]);
+				bool allHidden = SetPanelVisibility ((SplitContainer) basePanel.Controls [0], true);
 
 				if (allHidden) {
 					basePanel.Hide ();
@@ -203,32 +171,49 @@ namespace CSharpControls.DockManager {
 			}
 		}
 
-		private bool CheckSplitCollapse (SplitContainer split) {
+		private bool SetPanelVisibility (SplitContainer split, bool hiding) {
 			bool leftHidden;
 			bool rightHidden;
-
+			
 			if (split.Panel1.Controls [0] is DockTabControlPanel) {
 				leftHidden = AllTabsHidden ((DockTabControlPanel) split.Panel1.Controls [0]);
 			} else {
-				leftHidden = CheckSplitCollapse ((SplitContainer) split.Panel1.Controls [0]);
+				leftHidden = SetPanelVisibility ((SplitContainer) split.Panel1.Controls [0], hiding);
 			}
 
 			if (split.Panel2.Controls [0] is DockTabControlPanel) {
 				rightHidden = AllTabsHidden ((DockTabControlPanel) split.Panel2.Controls [0]);
 			} else {
-				rightHidden = CheckSplitCollapse ((SplitContainer) split.Panel2.Controls [0]);
+				rightHidden = SetPanelVisibility ((SplitContainer) split.Panel2.Controls [0], hiding);
 			}
 			
-			if (leftHidden && rightHidden) {
-				return true;
-			} else {
-				if (leftHidden) {
-					split.Panel1Collapsed = true;
-				} else if (rightHidden) {
-					split.Panel2Collapsed = true;
-				}
+			if (hiding) {
+				if (leftHidden && rightHidden) {
+					return true;
+				} else {
+					if (leftHidden) {
+						split.Panel1Collapsed = true;
+					} else if (rightHidden) {
+						split.Panel2Collapsed = true;
+					}
 
-				return false;
+					return false;
+				}
+			} else {
+				if (leftHidden && rightHidden) {
+					return true;
+				} else {
+					if (leftHidden == false && rightHidden == false) {
+						split.Panel1Collapsed = false;
+						split.Panel2Collapsed = false;
+					} else if (leftHidden == false) {
+						split.Panel2Collapsed = true;
+					} else {
+						split.Panel1Collapsed = true;
+					}
+					
+					return false;
+				}
 			}
 		}
 
@@ -294,6 +279,8 @@ namespace CSharpControls.DockManager {
 				}
 			}
 			
+			CollapseEmptyPanels ();
+
 			if (AutoSaveLayout) {
 				SaveLayout ();
 			}
