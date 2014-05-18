@@ -3,7 +3,7 @@ using System;
 using System.Drawing;
 using System.Diagnostics;
 
-namespace CSharpControls.WinForms {
+namespace CSharpControls {
 	public class CSSTabControl:TabControl {
 		/// <summary>
 		/// Gets or sets a value indicating whether the tabs can be dragged when the cursor is not on the tab bar.

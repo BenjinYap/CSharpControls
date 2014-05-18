@@ -2,8 +2,9 @@
 using System.Windows.Forms;
 using System.Xml;
 using System.Collections.Generic;
+using System.Linq;
 
-namespace CSharpControls.WinForms.DockManager {
+namespace CSharpControls.DockManager {
 	internal class DockLayoutManager {
 		private CSSDockManager dockManager;
 
@@ -68,12 +69,16 @@ namespace CSharpControls.WinForms.DockManager {
 			XmlNode node2 = node.ChildNodes [1];
 			
 			if (node1.Name == "tabControl") {
-				string [] formNames = node1.Attributes ["forms"].InnerText.Split (',');
-				dockManager.DockForm (panel, GetForm (formNames [0]), direction);
-				returnPanel = GetDockablePanel (formNames [0]);
+				List <string> formNames = node1.Attributes ["forms"].InnerText.Split (',').ToList ();
+				formNames.RemoveAll (name => GetForm (name) == null);
+
+				if (formNames.Count > 0) {
+					dockManager.DockForm (panel, GetForm (formNames [0]), direction);
+					returnPanel = GetDockablePanel (formNames [0]);
 				
-				for (int i = 1; i < formNames.Length; i++) {
-					dockManager.DockForm (returnPanel, GetForm (formNames [i]), DockDirection.Center);
+					for (int i = 1; i < formNames.Count; i++) {
+						dockManager.DockForm (returnPanel, GetForm (formNames [i]), DockDirection.Center);
+					}
 				}
 			} else {
 				returnPanel = LoadLayout (panel, direction, node1);
@@ -82,11 +87,15 @@ namespace CSharpControls.WinForms.DockManager {
 			direction = (node.Attributes ["orientation"].InnerText == "Vertical") ? DockDirection.Right : DockDirection.Bottom;
 			
 			if (node2.Name == "tabControl") {
-				string [] formNames = node2.Attributes ["forms"].InnerText.Split (',');
-				dockManager.DockForm (returnPanel, GetForm (formNames [0]), direction);
+				List <string> formNames = node2.Attributes ["forms"].InnerText.Split (',').ToList ();
+				formNames.RemoveAll (name => GetForm (name) == null);
+
+				if (formNames.Count > 0) {
+					dockManager.DockForm (returnPanel, GetForm (formNames [0]), direction);
 				
-				for (int i = 1; i < formNames.Length; i++) {
-					dockManager.DockForm (GetDockablePanel (formNames [0]), GetForm (formNames [i]), DockDirection.Center);
+					for (int i = 1; i < formNames.Count; i++) {
+						dockManager.DockForm (GetDockablePanel (formNames [0]), GetForm (formNames [i]), DockDirection.Center);
+					}
 				}
 			} else {
 				LoadLayout (returnPanel, direction, node2);

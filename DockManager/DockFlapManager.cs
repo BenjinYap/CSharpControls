@@ -4,7 +4,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Windows.Forms;
 
-namespace CSharpControls.WinForms.DockManager {
+namespace CSharpControls.DockManager {
 	internal class DockFlapManager {
 		private CSSDockManager dockManager;
 
