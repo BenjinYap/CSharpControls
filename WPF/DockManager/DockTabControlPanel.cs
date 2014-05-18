@@ -3,7 +3,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System;
 
-namespace CSharpControls.DockManager {
+namespace CSharpControls.WinForms.DockManager {
 	internal class DockTabControlPanel:Panel {
 		public CSSTabControl TabControl = new CSSTabControl ();
 		

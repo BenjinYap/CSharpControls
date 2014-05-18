@@ -10,7 +10,7 @@ using System.Xml;
 using System.Runtime.InteropServices;
 
 
-namespace CSharpControls.DockManager {
+namespace CSharpControls.WinForms.DockManager {
 
 	public class CSSDockManager:Panel {
 		public bool AutoSaveLayout = true;
