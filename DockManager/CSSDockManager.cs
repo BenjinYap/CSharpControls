@@ -158,6 +158,10 @@ namespace CSharpControls.DockManager {
 		}
 
 		private void CollapseEmptyPanels () {
+			if (AtLeastOneFormDocked == false) {
+				return;
+			}
+
 			if (DockablePanels.Count == 1) {
 				if (AllTabsHidden ((DockTabControlPanel) basePanel.Controls [0])) {
 					basePanel.Hide ();
