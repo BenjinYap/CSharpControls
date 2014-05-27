@@ -3,6 +3,7 @@ using System.Windows.Forms;
 using System.Xml;
 using System.Collections.Generic;
 using System.Linq;
+using System.Diagnostics;
 
 namespace CSharpControls.DockManager {
 	internal class DockLayoutManager {
@@ -96,6 +97,8 @@ namespace CSharpControls.DockManager {
 					for (int i = 1; i < formNames.Count; i++) {
 						dockManager.DockForm (GetDockablePanel (formNames [0]), GetForm (formNames [i]), DockDirection.Center);
 					}
+
+					GetSplitContainer (formNames [0]).SplitterDistance = int.Parse (node.Attributes ["d"].InnerText);
 				}
 			} else {
 				LoadLayout (returnPanel, direction, node2);
@@ -126,6 +129,7 @@ namespace CSharpControls.DockManager {
 		private void SaveSplitContainer (XmlWriter w, SplitContainer split) {
 			w.WriteStartElement ("split");
 			w.WriteAttributeString ("orientation", split.Orientation.ToString ());
+			w.WriteAttributeString ("d", split.SplitterDistance.ToString ());
 
 			new List <SplitterPanel> {split.Panel1, split.Panel2}.ForEach (panel => {
 				if (panel.Controls [0] is DockTabControlPanel) {
@@ -145,7 +149,7 @@ namespace CSharpControls.DockManager {
 
 		//name is the name of form that the panel should contain
 		private Panel GetDockablePanel (string name) {
-			CSSDockableForm form = dockManager.DockableForms.Find (f => f.Name == name);
+			CSSDockableForm form = GetForm (name);
 
 			if (dockManager.DockablePanels [0].Controls [0] == form.TabControl.Parent) {
 				return dockManager.DockablePanels [0];
@@ -162,6 +166,16 @@ namespace CSharpControls.DockManager {
 			}
 
 			return null;
+		}
+
+		private SplitContainer GetSplitContainer (string name) {
+			CSSDockableForm form = GetForm (name);
+
+			if (form == null) {
+				return null;
+			}
+
+			return (SplitContainer) form.TabControlPanel.Parent.Parent;
 		}
 
 		private const string layoutFile = "cssDockManagerLayout.xml";
