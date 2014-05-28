@@ -23,6 +23,8 @@ namespace CSharpControls.DockManager {
 		private DockFlapManager flapManager;
 		private DockLayoutManager layoutManager;
 		
+		private bool splitterMovedPending = false;
+
 		public CSSDockManager () {
 			flapManager = new DockFlapManager (this);
 			layoutManager = new DockLayoutManager (this);
@@ -57,7 +59,7 @@ namespace CSharpControls.DockManager {
 			return layoutManager.Save ();
 		}
 		
-		internal void DockForm (Panel panel, CSSDockableForm form, DockDirection direction) {			
+		internal void DockForm (Panel panel, CSSDockableForm form, DockDirection direction, bool loadingLayout) {
 			if (AtLeastOneFormDocked == false) {
 				AtLeastOneFormDocked = true;
 				basePanel.Show ();
@@ -72,6 +74,9 @@ namespace CSharpControls.DockManager {
 				tabControlPanel = (DockTabControlPanel) panel.Controls [0];
 			} else {  //not dock center, do a lot of things
 				SplitContainer split = new SplitContainer ();  //the new splitcontainer that will hold the old and new stuff
+				split.TabStop = false;
+				split.MouseUp += onSplitMouseUp;
+				split.SplitterMoved += onSplitterMoved;
 				split.Dock = DockStyle.Fill;
 				SplitterPanel oldPanel = null;
 				SplitterPanel newPanel = null;
@@ -130,7 +135,19 @@ namespace CSharpControls.DockManager {
 			form.TabPage = tab;
 			form.TabIndex = form.TabControl.SelectedIndex;
 
-			if (AutoSaveLayout) {
+			if (AutoSaveLayout && loadingLayout == false) {
+				SaveLayout ();
+			}
+		}
+
+		private void onSplitMouseUp (object obj, EventArgs e) {
+			splitterMovedPending = true;
+		}
+
+		private void onSplitterMoved (object obj, EventArgs e) {
+			if (splitterMovedPending && AutoSaveLayout) {
+				Debug.WriteLine("AWD");
+				splitterMovedPending = false;
 				SaveLayout ();
 			}
 		}
@@ -304,21 +321,21 @@ namespace CSharpControls.DockManager {
 				DockDirection dir = flapManager.GetDockDirection ();
 				
 				if (dir != DockDirection.None) {
-					DockForm (GetHoveredPanel (), form, dir);
+					DockForm (GetHoveredPanel (), form, dir, false);
 					return;
 				}
 
 				dir = flapManager.GetFarDockDirection ();
 				
 				if (dir != DockDirection.None) {
-					DockForm (basePanel, form, dir);
+					DockForm (basePanel, form, dir, false);
 				}
 
 			} else {
 				DockDirection dir = flapManager.GetFarDockDirection ();
 				
 				if (dir != DockDirection.None) {
-					DockForm (basePanel, form, DockDirection.Center);
+					DockForm (basePanel, form, DockDirection.Center, false);
 				}
 			}
 		}

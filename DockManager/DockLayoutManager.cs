@@ -29,12 +29,13 @@ namespace CSharpControls.DockManager {
 			}
 
 			XmlNode node = root.ChildNodes [0];
+
 			
 			if (node.Name == "tabControl") {
 				string [] formNames = node.Attributes ["forms"].InnerText.Split (',');
 				
 				for (int i = 0; i < formNames.Length; i++) {
-					dockManager.DockForm (dockManager.DockablePanels [0], GetForm (formNames [i]), DockDirection.Center);
+					dockManager.DockForm (dockManager.DockablePanels [0], GetForm (formNames [i]), DockDirection.Center, true);
 				}
 			} else {
 				LoadLayout (dockManager.DockablePanels [0], DockDirection.Center, node);
@@ -74,11 +75,17 @@ namespace CSharpControls.DockManager {
 				formNames.RemoveAll (name => GetForm (name) == null);
 
 				if (formNames.Count > 0) {
-					dockManager.DockForm (panel, GetForm (formNames [0]), direction);
+					dockManager.DockForm (panel, GetForm (formNames [0]), direction, true);
 					returnPanel = GetDockablePanel (formNames [0]);
 				
 					for (int i = 1; i < formNames.Count; i++) {
-						dockManager.DockForm (returnPanel, GetForm (formNames [i]), DockDirection.Center);
+						dockManager.DockForm (returnPanel, GetForm (formNames [i]), DockDirection.Center, true);
+					}
+
+					SplitContainer split = GetForm (formNames [0]).TabControlPanel.Parent.Parent as SplitContainer;
+
+					if (split != null) {
+						split.SplitterDistance = int.Parse (node.Attributes ["d"].InnerText);
 					}
 				}
 			} else {
@@ -92,13 +99,17 @@ namespace CSharpControls.DockManager {
 				formNames.RemoveAll (name => GetForm (name) == null);
 
 				if (formNames.Count > 0) {
-					dockManager.DockForm (returnPanel, GetForm (formNames [0]), direction);
+					dockManager.DockForm (returnPanel, GetForm (formNames [0]), direction, true);
 				
 					for (int i = 1; i < formNames.Count; i++) {
-						dockManager.DockForm (GetDockablePanel (formNames [0]), GetForm (formNames [i]), DockDirection.Center);
+						dockManager.DockForm (GetDockablePanel (formNames [0]), GetForm (formNames [i]), DockDirection.Center, true);
 					}
 
-					GetSplitContainer (formNames [0]).SplitterDistance = int.Parse (node.Attributes ["d"].InnerText);
+					SplitContainer split = GetForm (formNames [0]).TabControlPanel.Parent.Parent as SplitContainer;
+					
+					if (split != null) {
+						split.SplitterDistance = int.Parse (node.Attributes ["d"].InnerText);
+					}
 				}
 			} else {
 				LoadLayout (returnPanel, direction, node2);
@@ -107,7 +118,6 @@ namespace CSharpControls.DockManager {
 			return returnPanel;
 		}
 
-		
 		private void SaveTabControlPanel (XmlWriter w, DockTabControlPanel tabControlPanel) {
 			w.WriteStartElement ("tabControl");
 			TabControl tabControl = tabControlPanel.TabControl;
