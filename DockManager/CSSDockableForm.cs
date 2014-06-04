@@ -64,6 +64,14 @@ namespace CSharpControls.DockManager {
 			}
 		}
 
+		public new void Show () {
+			this.Visible = true;
+		}
+
+		public new void Hide () {
+			this.Visible = false;
+		}
+
 		public void Registered () {
 			this.ResizeBegin += onResizeBegin;
 			this.ResizeEnd += onResizeEnd;
